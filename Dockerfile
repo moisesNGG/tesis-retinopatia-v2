@@ -50,7 +50,17 @@ RUN echo "[MODEL CHECK] Verificando archivos de modelos..." && \
         fi; \
     done && \
     if [ "$NEEDS_DOWNLOAD" = "1" ]; then \
-        echo "[WARN] Algunos modelos no encontrados o son LFS pointers, pero continuando..."; \
+        echo "" && \
+        echo "[INFO] Descargando modelos desde GitHub LFS..." && \
+        cd /tmp && \
+        GIT_LFS_SKIP_SMUDGE=0 git clone --depth 1 --filter=blob:none --sparse https://github.com/moisesNGG/tesis-retinopatia-v2.git repo && \
+        cd repo && \
+        git sparse-checkout set backend/models_weights && \
+        git lfs pull --include="backend/models_weights/**" && \
+        echo "[INFO] Copiando modelos descargados..." && \
+        cp -r backend/models_weights/* /app/models_weights/ && \
+        cd / && rm -rf /tmp/repo && \
+        echo "[OK] Modelos descargados exitosamente"; \
     else \
         echo "[OK] Todos los modelos son binarios reales, no se necesita descarga"; \
     fi
