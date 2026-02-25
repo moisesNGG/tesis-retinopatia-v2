@@ -34,7 +34,7 @@ RUN echo "[MODEL CHECK] Verificando archivos de modelos..." && \
     for f in /app/models_weights/densenet121_ea/best_model.pth \
              /app/models_weights/efficientnet_b0_ea/best_model.pth \
              /app/models_weights/resnet50_ea/best_model.pth \
-             /app/models_weights/vit_b16/vit_b16_best.pt \
+             /app/models_weights/vit_b16_ea/best_model.pth \
              /app/models_weights/yolov8x_cls/best.pt; do \
         if [ -f "$f" ]; then \
             SIZE=$(stat -c%s "$f"); \
@@ -45,22 +45,12 @@ RUN echo "[MODEL CHECK] Verificando archivos de modelos..." && \
                 echo "  [OK] $f es binario real (${SIZE} bytes)"; \
             fi; \
         else \
-            echo "  [WARN] $f no encontrado - necesita descarga"; \
+            echo "  [WARN] $f no encontrado"; \
             NEEDS_DOWNLOAD=1; \
         fi; \
     done && \
     if [ "$NEEDS_DOWNLOAD" = "1" ]; then \
-        echo "" && \
-        echo "[INFO] Descargando modelos desde GitHub LFS..." && \
-        cd /tmp && \
-        GIT_LFS_SKIP_SMUDGE=0 git clone --depth 1 --filter=blob:none --sparse https://github.com/moisesNGG/tesis-retinopatia.git repo && \
-        cd repo && \
-        git sparse-checkout set backend/models_weights && \
-        git lfs pull --include="backend/models_weights/**" && \
-        echo "[INFO] Copiando modelos descargados..." && \
-        cp -r backend/models_weights/* /app/models_weights/ && \
-        cd / && rm -rf /tmp/repo && \
-        echo "[OK] Modelos descargados exitosamente"; \
+        echo "[WARN] Algunos modelos no encontrados o son LFS pointers, pero continuando..."; \
     else \
         echo "[OK] Todos los modelos son binarios reales, no se necesita descarga"; \
     fi
@@ -71,7 +61,7 @@ RUN echo "[FINAL CHECK] Verificando modelos finales..." && \
     for f in /app/models_weights/densenet121_ea/best_model.pth \
              /app/models_weights/efficientnet_b0_ea/best_model.pth \
              /app/models_weights/resnet50_ea/best_model.pth \
-             /app/models_weights/vit_b16/vit_b16_best.pt \
+             /app/models_weights/vit_b16_ea/best_model.pth \
              /app/models_weights/yolov8x_cls/best.pt; do \
         SIZE=$(stat -c%s "$f" 2>/dev/null || echo 0); \
         echo "  $f -> ${SIZE} bytes"; \

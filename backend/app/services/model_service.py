@@ -25,7 +25,7 @@ SEVERITY_LEVELS = ['none', 'mild', 'moderate', 'severe', 'proliferative']
 NUM_CLASSES = 5
 
 # ---------------------------------------------------------------------------
-# External Attention (modulo compartido por DenseNet, EfficientNet y ResNet)
+# External Attention (modulo compartido por todos los modelos)
 # ---------------------------------------------------------------------------
 class ExternalAttention(nn.Module):
     def __init__(self, dim, num_heads=8, dim_head=64, dropout=0.):
@@ -58,7 +58,8 @@ class ExternalAttention(nn.Module):
 
 
 # ---------------------------------------------------------------------------
-# DenseNet121 + 6 Conv Layers + External Attention
+# DenseNet121 + 10 Conv Layers + External Attention
+# Canales: 1024->896->768->640->512->448->384->320->256->256->256
 # ---------------------------------------------------------------------------
 class DenseNet121WithExternalAttention(nn.Module):
     def __init__(self, num_classes=NUM_CLASSES, pretrained=False):
@@ -66,12 +67,16 @@ class DenseNet121WithExternalAttention(nn.Module):
         densenet = models.densenet121(weights=None)
         self.features = densenet.features  # output: 1024 channels
 
-        self.extra_conv1 = nn.Sequential(nn.Conv2d(1024, 512, 3, padding=1), nn.BatchNorm2d(512), nn.ReLU(inplace=True), nn.Dropout2d(0.3))
-        self.extra_conv2 = nn.Sequential(nn.Conv2d(512, 384, 3, padding=1), nn.BatchNorm2d(384), nn.ReLU(inplace=True), nn.Dropout2d(0.3))
-        self.extra_conv3 = nn.Sequential(nn.Conv2d(384, 320, 3, padding=1), nn.BatchNorm2d(320), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
-        self.extra_conv4 = nn.Sequential(nn.Conv2d(320, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
-        self.extra_conv5 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
-        self.extra_conv6 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True))
+        self.extra_conv1 = nn.Sequential(nn.Conv2d(1024, 896, 3, padding=1), nn.BatchNorm2d(896), nn.ReLU(inplace=True), nn.Dropout2d(0.3))
+        self.extra_conv2 = nn.Sequential(nn.Conv2d(896, 768, 3, padding=1), nn.BatchNorm2d(768), nn.ReLU(inplace=True), nn.Dropout2d(0.3))
+        self.extra_conv3 = nn.Sequential(nn.Conv2d(768, 640, 3, padding=1), nn.BatchNorm2d(640), nn.ReLU(inplace=True), nn.Dropout2d(0.3))
+        self.extra_conv4 = nn.Sequential(nn.Conv2d(640, 512, 3, padding=1), nn.BatchNorm2d(512), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv5 = nn.Sequential(nn.Conv2d(512, 448, 3, padding=1), nn.BatchNorm2d(448), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv6 = nn.Sequential(nn.Conv2d(448, 384, 3, padding=1), nn.BatchNorm2d(384), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv7 = nn.Sequential(nn.Conv2d(384, 320, 3, padding=1), nn.BatchNorm2d(320), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv8 = nn.Sequential(nn.Conv2d(320, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv9 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv10 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True))
 
         self.gap = nn.AdaptiveAvgPool2d((1, 1))
         self.external_attention = ExternalAttention(dim=256, num_heads=8, dim_head=32, dropout=0.1)
@@ -85,6 +90,10 @@ class DenseNet121WithExternalAttention(nn.Module):
         x = self.extra_conv4(x)
         x = self.extra_conv5(x)
         x = self.extra_conv6(x)
+        x = self.extra_conv7(x)
+        x = self.extra_conv8(x)
+        x = self.extra_conv9(x)
+        x = self.extra_conv10(x)
         x = self.gap(x).flatten(1)
         x = x.unsqueeze(1)
         x = self.external_attention(x)
@@ -93,7 +102,8 @@ class DenseNet121WithExternalAttention(nn.Module):
 
 
 # ---------------------------------------------------------------------------
-# EfficientNet-B0 + 6 Conv Layers + External Attention (SiLU activation)
+# EfficientNet-B0 + 10 Conv Layers + External Attention (SiLU activation)
+# Canales: 1280->640->448->320->256->256->256->256->256->256->256
 # ---------------------------------------------------------------------------
 class EfficientNetB0WithExternalAttention(nn.Module):
     def __init__(self, num_classes=NUM_CLASSES, pretrained=False):
@@ -106,7 +116,11 @@ class EfficientNetB0WithExternalAttention(nn.Module):
         self.extra_conv3 = nn.Sequential(nn.Conv2d(448, 320, 3, padding=1), nn.BatchNorm2d(320), nn.SiLU(inplace=True), nn.Dropout2d(0.2))
         self.extra_conv4 = nn.Sequential(nn.Conv2d(320, 256, 3, padding=1), nn.BatchNorm2d(256), nn.SiLU(inplace=True), nn.Dropout2d(0.2))
         self.extra_conv5 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.SiLU(inplace=True), nn.Dropout2d(0.2))
-        self.extra_conv6 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.SiLU(inplace=True))
+        self.extra_conv6 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.SiLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv7 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.SiLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv8 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.SiLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv9 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.SiLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv10 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.SiLU(inplace=True))
 
         self.gap = nn.AdaptiveAvgPool2d((1, 1))
         self.external_attention = ExternalAttention(dim=256, num_heads=8, dim_head=32, dropout=0.1)
@@ -120,6 +134,10 @@ class EfficientNetB0WithExternalAttention(nn.Module):
         x = self.extra_conv4(x)
         x = self.extra_conv5(x)
         x = self.extra_conv6(x)
+        x = self.extra_conv7(x)
+        x = self.extra_conv8(x)
+        x = self.extra_conv9(x)
+        x = self.extra_conv10(x)
         x = self.gap(x).flatten(1)
         x = x.unsqueeze(1)
         x = self.external_attention(x)
@@ -128,31 +146,135 @@ class EfficientNetB0WithExternalAttention(nn.Module):
 
 
 # ---------------------------------------------------------------------------
-# ResNet50 + 5 Conv Layers + External Attention
+# ResNet50 + 10 Conv Layers + External Attention
+# Backbone usa atributos directos (conv1, bn1, layer1..4) en vez de nn.Sequential
+# Canales: 2048->1024->768->640->512->448->384->320->256->256->256
 # ---------------------------------------------------------------------------
 class ResNet50WithExternalAttention(nn.Module):
     def __init__(self, num_classes=NUM_CLASSES, pretrained=False):
         super().__init__()
         resnet = models.resnet50(weights=None)
-        self.features = nn.Sequential(*list(resnet.children())[:-2])  # output: 2048 channels
+        # Guardar las capas del backbone como atributos directos para que
+        # las keys del state_dict coincidan (conv1, bn1, layer1, etc.)
+        self.conv1 = resnet.conv1
+        self.bn1 = resnet.bn1
+        self.relu = resnet.relu
+        self.maxpool = resnet.maxpool
+        self.layer1 = resnet.layer1
+        self.layer2 = resnet.layer2
+        self.layer3 = resnet.layer3
+        self.layer4 = resnet.layer4
 
         self.extra_conv1 = nn.Sequential(nn.Conv2d(2048, 1024, 3, padding=1), nn.BatchNorm2d(1024), nn.ReLU(inplace=True), nn.Dropout2d(0.3))
-        self.extra_conv2 = nn.Sequential(nn.Conv2d(1024, 512, 3, padding=1), nn.BatchNorm2d(512), nn.ReLU(inplace=True), nn.Dropout2d(0.3))
-        self.extra_conv3 = nn.Sequential(nn.Conv2d(512, 512, 3, padding=1), nn.BatchNorm2d(512), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
-        self.extra_conv4 = nn.Sequential(nn.Conv2d(512, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
-        self.extra_conv5 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True))
+        self.extra_conv2 = nn.Sequential(nn.Conv2d(1024, 768, 3, padding=1), nn.BatchNorm2d(768), nn.ReLU(inplace=True), nn.Dropout2d(0.3))
+        self.extra_conv3 = nn.Sequential(nn.Conv2d(768, 640, 3, padding=1), nn.BatchNorm2d(640), nn.ReLU(inplace=True), nn.Dropout2d(0.3))
+        self.extra_conv4 = nn.Sequential(nn.Conv2d(640, 512, 3, padding=1), nn.BatchNorm2d(512), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv5 = nn.Sequential(nn.Conv2d(512, 448, 3, padding=1), nn.BatchNorm2d(448), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv6 = nn.Sequential(nn.Conv2d(448, 384, 3, padding=1), nn.BatchNorm2d(384), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv7 = nn.Sequential(nn.Conv2d(384, 320, 3, padding=1), nn.BatchNorm2d(320), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv8 = nn.Sequential(nn.Conv2d(320, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv9 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv10 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True))
 
         self.gap = nn.AdaptiveAvgPool2d((1, 1))
         self.external_attention = ExternalAttention(dim=256, num_heads=8, dim_head=32, dropout=0.1)
         self.classifier = nn.Sequential(nn.Linear(256, 512), nn.ReLU(inplace=True), nn.Dropout(0.5), nn.Linear(512, num_classes))
 
     def forward(self, x):
-        x = self.features(x)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
         x = self.extra_conv1(x)
         x = self.extra_conv2(x)
         x = self.extra_conv3(x)
         x = self.extra_conv4(x)
         x = self.extra_conv5(x)
+        x = self.extra_conv6(x)
+        x = self.extra_conv7(x)
+        x = self.extra_conv8(x)
+        x = self.extra_conv9(x)
+        x = self.extra_conv10(x)
+        x = self.gap(x).flatten(1)
+        x = x.unsqueeze(1)
+        x = self.external_attention(x)
+        x = x.squeeze(1)
+        return self.classifier(x)
+
+
+# ---------------------------------------------------------------------------
+# ViT-B/16 + 10 Conv Layers + External Attention
+# Toma la salida 768-dim del ViT, proyecta espacialmente a un feature map,
+# luego pasa por 10 conv layers + EA + classifier
+# Canales: 768->640->512->448->384->320->256->256->256->256->256
+# ---------------------------------------------------------------------------
+class ViTB16WithExternalAttention(nn.Module):
+    def __init__(self, num_classes=NUM_CLASSES, pretrained=False):
+        super().__init__()
+        from torchvision.models import vit_b_16
+        vit = vit_b_16(weights=None)
+        # Backbone ViT (sin la cabeza de clasificacion)
+        self.class_token = vit.class_token
+        self.conv_proj = vit.conv_proj
+        self.encoder = vit.encoder
+
+        # Proyeccion espacial: Linear(768, 768) para reconstruir feature map
+        self.spatial_proj = nn.Sequential(nn.Linear(768, 768))
+
+        # 10 Conv layers: 768 -> ... -> 256
+        self.extra_conv1 = nn.Sequential(nn.Conv2d(768, 640, 3, padding=1), nn.BatchNorm2d(640), nn.ReLU(inplace=True), nn.Dropout2d(0.3))
+        self.extra_conv2 = nn.Sequential(nn.Conv2d(640, 512, 3, padding=1), nn.BatchNorm2d(512), nn.ReLU(inplace=True), nn.Dropout2d(0.3))
+        self.extra_conv3 = nn.Sequential(nn.Conv2d(512, 448, 3, padding=1), nn.BatchNorm2d(448), nn.ReLU(inplace=True), nn.Dropout2d(0.3))
+        self.extra_conv4 = nn.Sequential(nn.Conv2d(448, 384, 3, padding=1), nn.BatchNorm2d(384), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv5 = nn.Sequential(nn.Conv2d(384, 320, 3, padding=1), nn.BatchNorm2d(320), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv6 = nn.Sequential(nn.Conv2d(320, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv7 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv8 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv9 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True), nn.Dropout2d(0.2))
+        self.extra_conv10 = nn.Sequential(nn.Conv2d(256, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(inplace=True))
+
+        self.gap = nn.AdaptiveAvgPool2d((1, 1))
+        self.external_attention = ExternalAttention(dim=256, num_heads=8, dim_head=32, dropout=0.1)
+        self.classifier = nn.Sequential(nn.Linear(256, 512), nn.ReLU(inplace=True), nn.Dropout(0.5), nn.Linear(512, num_classes))
+
+    def forward(self, x):
+        # ViT backbone (reproduce la logica interna de vit_b_16.forward)
+        # 1) Patch embedding via conv_proj
+        x = self.conv_proj(x)  # [B, 768, 14, 14]
+        b, c, h, w = x.shape
+        x = x.flatten(2).transpose(1, 2)  # [B, 196, 768]
+
+        # 2) Prepend class token
+        cls_token = self.class_token.expand(b, -1, -1)  # [B, 1, 768]
+        x = torch.cat([cls_token, x], dim=1)  # [B, 197, 768]
+
+        # 3) Encoder (positional embedding incluido dentro)
+        x = self.encoder(x)  # [B, 197, 768]
+
+        # 4) Tomar solo los patch tokens (excluir CLS) y proyectar
+        patch_tokens = x[:, 1:, :]  # [B, 196, 768]
+        patch_tokens = self.spatial_proj(patch_tokens)  # [B, 196, 768]
+
+        # 5) Reshape a feature map 2D: [B, 768, 14, 14]
+        x = patch_tokens.transpose(1, 2).reshape(b, -1, h, w)
+
+        # 6) Conv layers
+        x = self.extra_conv1(x)
+        x = self.extra_conv2(x)
+        x = self.extra_conv3(x)
+        x = self.extra_conv4(x)
+        x = self.extra_conv5(x)
+        x = self.extra_conv6(x)
+        x = self.extra_conv7(x)
+        x = self.extra_conv8(x)
+        x = self.extra_conv9(x)
+        x = self.extra_conv10(x)
+
+        # 7) GAP + EA + Classifier
         x = self.gap(x).flatten(1)
         x = x.unsqueeze(1)
         x = self.external_attention(x)
@@ -218,9 +340,10 @@ class ModelService:
                 'checkpoint_key': 'model_state_dict',
             },
             {
-                'name': 'ViT-B/16',
-                'path': os.path.join(models_dir, 'vit_b16', 'vit_b16_best.pt'),
-                'checkpoint_key': None,  # state_dict directo
+                'name': 'ViT-B/16 + EA',
+                'class': ViTB16WithExternalAttention,
+                'path': os.path.join(models_dir, 'vit_b16_ea', 'best_model.pth'),
+                'checkpoint_key': 'model_state_dict',
             },
             {
                 'name': 'YOLOv8x-cls',
@@ -237,8 +360,6 @@ class ModelService:
 
                 if cfg['checkpoint_key'] == 'yolo':
                     self._load_yolo(cfg)
-                elif cfg['name'] == 'ViT-B/16':
-                    self._load_vit(cfg)
                 else:
                     self._load_pytorch(cfg)
 
@@ -262,52 +383,15 @@ class ModelService:
 
         try:
             model.load_state_dict(state_dict)
-        except RuntimeError as e:
-            print(f"  [WARN] load_state_dict fallo para {cfg['name']}, intentando remap de keys...")
-            model_keys = set(model.state_dict().keys())
-            ckpt_keys = set(state_dict.keys())
-            missing = model_keys - ckpt_keys
-            unexpected = ckpt_keys - model_keys
-
-            if missing or unexpected:
-                print(f"    Keys faltantes ({len(missing)}): {list(missing)[:5]}...")
-                print(f"    Keys inesperadas ({len(unexpected)}): {list(unexpected)[:5]}...")
-
-            # Intentar remap: resnet. <-> features.
-            remapped = {}
-            for k, v in state_dict.items():
-                new_key = k
-                if k.startswith('resnet.'):
-                    new_key = 'features.' + k[len('resnet.'):]
-                elif k.startswith('features.'):
-                    new_key = 'resnet.' + k[len('features.'):]
-                remapped[new_key] = v
-
-            try:
-                model.load_state_dict(remapped)
-                print(f"  [OK] Remap exitoso para {cfg['name']}")
-            except RuntimeError:
-                # Ultimo intento: strict=False
-                print(f"  [WARN] Remap fallo, cargando con strict=False para {cfg['name']}")
-                result = model.load_state_dict(state_dict, strict=False)
-                if result.missing_keys:
-                    print(f"    Missing keys: {result.missing_keys[:5]}...")
-                if result.unexpected_keys:
-                    print(f"    Unexpected keys: {result.unexpected_keys[:5]}...")
+        except RuntimeError:
+            print(f"  [WARN] load_state_dict fallo para {cfg['name']}, intentando strict=False...")
+            result = model.load_state_dict(state_dict, strict=False)
+            if result.missing_keys:
+                print(f"    Missing keys: {result.missing_keys[:5]}...")
+            if result.unexpected_keys:
+                print(f"    Unexpected keys: {result.unexpected_keys[:5]}...")
 
         del checkpoint, state_dict
-        gc.collect()
-        model.to(self.device)
-        model.eval()
-        self.models[cfg['name']] = {'model': model, 'type': 'pytorch'}
-
-    def _load_vit(self, cfg: dict):
-        from torchvision.models import vit_b_16
-        model = vit_b_16(weights=None)
-        model.heads.head = nn.Linear(model.heads.head.in_features, NUM_CLASSES)
-        state_dict = torch.load(cfg['path'], map_location=self.device, weights_only=False)
-        model.load_state_dict(state_dict)
-        del state_dict
         gc.collect()
         model.to(self.device)
         model.eval()
