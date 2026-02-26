@@ -28,6 +28,9 @@ COPY backend/ .
 # Copiar pesos de modelos (pueden ser binarios reales o LFS pointers)
 COPY backend/models_weights/ /app/models_weights/
 
+# Cache bust para forzar re-descarga de modelos LFS
+ARG CACHEBUST=2
+
 # Si los modelos son LFS pointers, descargar los binarios reales desde GitHub
 RUN echo "[MODEL CHECK] Verificando archivos de modelos..." && \
     NEEDS_DOWNLOAD=0 && \
