@@ -5,17 +5,14 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Instalar dependencias del sistema (incluyendo OpenCV deps para ultralytics y git-lfs)
+# Instalar dependencias del sistema (incluyendo OpenCV deps para ultralytics)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     python3 \
     python3-pip \
     libgl1 \
     libglib2.0-0 \
-    git \
-    git-lfs \
     && ln -s /usr/bin/python3 /usr/bin/python \
-    && git lfs install \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar archivos de backend
@@ -25,58 +22,30 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # Copiar código del backend
 COPY backend/ .
 
-# Copiar pesos de modelos (pueden ser binarios reales o LFS pointers)
-COPY backend/models_weights/ /app/models_weights/
-
-# Cache bust para forzar re-descarga de modelos LFS
-ARG CACHEBUST=3
-
-# Si los modelos son LFS pointers, descargar los binarios reales desde GitHub
-RUN echo "[MODEL CHECK] Verificando archivos de modelos..." && \
-    NEEDS_DOWNLOAD=0 && \
-    for f in /app/models_weights/densenet121_ea/best_model.pth \
-             /app/models_weights/efficientnet_b0_ea/best_model.pth \
-             /app/models_weights/resnet50_ea/best_model.pth \
-             /app/models_weights/vit_b16_ea/best_model.pth \
-             /app/models_weights/yolov8x_cls/best.pt; do \
-        if [ -f "$f" ]; then \
-            SIZE=$(stat -c%s "$f"); \
-            if [ "$SIZE" -lt 10000 ]; then \
-                echo "  [LFS] $f es un pointer (${SIZE} bytes) - necesita descarga"; \
-                NEEDS_DOWNLOAD=1; \
-            else \
-                echo "  [OK] $f es binario real (${SIZE} bytes)"; \
-            fi; \
-        else \
-            echo "  [WARN] $f no encontrado"; \
-            NEEDS_DOWNLOAD=1; \
-        fi; \
-    done && \
-    if [ "$NEEDS_DOWNLOAD" = "1" ]; then \
-        echo "" && \
-        echo "[INFO] Descargando modelos desde GitHub LFS..." && \
-        cd /tmp && \
-        GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --filter=blob:none --sparse https://github.com/moisesNGG/tesis-retinopatia-v2.git repo && \
-        cd repo && \
-        git sparse-checkout set backend/models_weights && \
-        echo "[INFO] Descargando LFS objects uno por uno..." && \
-        git lfs pull --include="backend/models_weights/densenet121_ea/best_model.pth" && \
-        echo "  [OK] densenet121" && \
-        git lfs pull --include="backend/models_weights/efficientnet_b0_ea/best_model.pth" && \
-        echo "  [OK] efficientnet_b0" && \
-        git lfs pull --include="backend/models_weights/resnet50_ea/best_model.pth" && \
-        echo "  [OK] resnet50" && \
-        git lfs pull --include="backend/models_weights/vit_b16_ea/best_model.pth" && \
-        echo "  [OK] vit_b16" && \
-        git lfs pull --include="backend/models_weights/yolov8x_cls/best.pt" && \
-        echo "  [OK] yolov8x" && \
-        echo "[INFO] Copiando modelos descargados..." && \
-        cp -r backend/models_weights/* /app/models_weights/ && \
-        cd / && rm -rf /tmp/repo && \
-        echo "[OK] Modelos descargados exitosamente"; \
-    else \
-        echo "[OK] Todos los modelos son binarios reales, no se necesita descarga"; \
-    fi
+# Descargar modelos desde Hugging Face (sin limite de bandwidth)
+ENV HF_REPO=https://huggingface.co/Pimientos7/retinopatia-models-v2/resolve/main
+RUN echo "[INFO] Descargando modelos desde Hugging Face..." && \
+    mkdir -p /app/models_weights/densenet121_ea \
+             /app/models_weights/efficientnet_b0_ea \
+             /app/models_weights/resnet50_ea \
+             /app/models_weights/vit_b16_ea \
+             /app/models_weights/yolov8x_cls && \
+    curl -L -o /app/models_weights/densenet121_ea/best_model.pth \
+        "${HF_REPO}/densenet121_ea/best_model.pth" && \
+    echo "  [OK] densenet121 descargado" && \
+    curl -L -o /app/models_weights/efficientnet_b0_ea/best_model.pth \
+        "${HF_REPO}/efficientnet_b0_ea/best_model.pth" && \
+    echo "  [OK] efficientnet_b0 descargado" && \
+    curl -L -o /app/models_weights/resnet50_ea/best_model.pth \
+        "${HF_REPO}/resnet50_ea/best_model.pth" && \
+    echo "  [OK] resnet50 descargado" && \
+    curl -L -o /app/models_weights/vit_b16_ea/best_model.pth \
+        "${HF_REPO}/vit_b16_ea/best_model.pth" && \
+    echo "  [OK] vit_b16 descargado" && \
+    curl -L -o /app/models_weights/yolov8x_cls/best.pt \
+        "${HF_REPO}/yolov8x_cls/best.pt" && \
+    echo "  [OK] yolov8x descargado" && \
+    echo "[OK] Todos los modelos descargados desde Hugging Face"
 
 # Verificacion final: asegurar que todos los modelos son binarios reales
 RUN echo "[FINAL CHECK] Verificando modelos finales..." && \
