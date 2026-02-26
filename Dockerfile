@@ -29,7 +29,7 @@ COPY backend/ .
 COPY backend/models_weights/ /app/models_weights/
 
 # Cache bust para forzar re-descarga de modelos LFS
-ARG CACHEBUST=2
+ARG CACHEBUST=3
 
 # Si los modelos son LFS pointers, descargar los binarios reales desde GitHub
 RUN echo "[MODEL CHECK] Verificando archivos de modelos..." && \
@@ -56,10 +56,20 @@ RUN echo "[MODEL CHECK] Verificando archivos de modelos..." && \
         echo "" && \
         echo "[INFO] Descargando modelos desde GitHub LFS..." && \
         cd /tmp && \
-        GIT_LFS_SKIP_SMUDGE=0 git clone --depth 1 --filter=blob:none --sparse https://github.com/moisesNGG/tesis-retinopatia-v2.git repo && \
+        GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --filter=blob:none --sparse https://github.com/moisesNGG/tesis-retinopatia-v2.git repo && \
         cd repo && \
         git sparse-checkout set backend/models_weights && \
-        git lfs pull --include="backend/models_weights/**" && \
+        echo "[INFO] Descargando LFS objects uno por uno..." && \
+        git lfs pull --include="backend/models_weights/densenet121_ea/best_model.pth" && \
+        echo "  [OK] densenet121" && \
+        git lfs pull --include="backend/models_weights/efficientnet_b0_ea/best_model.pth" && \
+        echo "  [OK] efficientnet_b0" && \
+        git lfs pull --include="backend/models_weights/resnet50_ea/best_model.pth" && \
+        echo "  [OK] resnet50" && \
+        git lfs pull --include="backend/models_weights/vit_b16_ea/best_model.pth" && \
+        echo "  [OK] vit_b16" && \
+        git lfs pull --include="backend/models_weights/yolov8x_cls/best.pt" && \
+        echo "  [OK] yolov8x" && \
         echo "[INFO] Copiando modelos descargados..." && \
         cp -r backend/models_weights/* /app/models_weights/ && \
         cd / && rm -rf /tmp/repo && \
