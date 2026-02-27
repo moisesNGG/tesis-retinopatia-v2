@@ -11,6 +11,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '..
 import {
   Upload, Image as ImageIcon, AlertCircle, CheckCircle2, Loader2,
   ShieldCheck, Info, Download, RotateCcw, AlertTriangle, Activity, Eye,
+  Swords, Crown, TrendingUp, TrendingDown, Minus,
 } from 'lucide-react';
 import { pagesAPI, predictionAPI } from '../services/api';
 import Hero from '../components/sections/Hero';
@@ -512,6 +513,177 @@ const Proceso = () => {
                   </CardContent>
                 </Card>
               )}
+
+              {/* === VERSUS: EfficientNet-B0 vs Todos === */}
+              {result.is_retinal && (() => {
+                const PRIMARY_MODEL = 'EfficientNet-B0 + EA';
+                const primary = result.results.find(r => r.model_name === PRIMARY_MODEL);
+                const others = result.results.filter(r => r.model_name !== PRIMARY_MODEL && r.prediction !== 'Error');
+
+                if (!primary || others.length === 0) return null;
+
+                const getDiffIcon = (diff) => {
+                  if (diff > 5) return <TrendingUp className="h-3.5 w-3.5 text-green-500" />;
+                  if (diff < -5) return <TrendingDown className="h-3.5 w-3.5 text-red-500" />;
+                  return <Minus className="h-3.5 w-3.5 text-gray-400" />;
+                };
+
+                const getDiffColor = (diff) => {
+                  if (diff > 5) return 'text-green-600';
+                  if (diff < -5) return 'text-red-600';
+                  return 'text-gray-500';
+                };
+
+                return (
+                  <Card className="border-2 border-blue-300 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Swords className="h-5 w-5 text-blue-600" />
+                        EfficientNet-B0 + EA vs Todos los Modelos
+                      </CardTitle>
+                      <p className="text-xs text-gray-500">
+                        Comparacion de confianza del modelo principal contra cada modelo del ensemble
+                      </p>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Modelo principal destacado */}
+                      <div className="bg-blue-600 text-white rounded-xl p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Crown className="h-5 w-5 text-yellow-300" />
+                            <div>
+                              <p className="font-bold text-sm">{primary.model_name}</p>
+                              <p className="text-blue-200 text-xs">Modelo principal del sistema</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-bold">{(primary.confidence * 100).toFixed(1)}%</p>
+                            <Badge className={`text-[10px] ${
+                              primary.severity === 'none' ? 'bg-green-500' :
+                              primary.severity === 'mild' ? 'bg-yellow-500' :
+                              primary.severity === 'moderate' ? 'bg-orange-500' :
+                              primary.severity === 'severe' ? 'bg-red-500' :
+                              'bg-red-700'
+                            } text-white border-0`}>
+                              {primary.prediction}
+                            </Badge>
+                          </div>
+                        </div>
+                        {/* Barras de probabilidad del principal */}
+                        <div className="mt-3 space-y-1">
+                          {primary.probabilities && primary.probabilities.map((prob, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <span className="text-[10px] text-blue-200 w-20 text-right flex-shrink-0">
+                                {CLASS_LABELS[i]}
+                              </span>
+                              <div className="flex-1 bg-blue-500/40 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-white/80 transition-all"
+                                  style={{ width: `${Math.max(prob * 100, 0.5)}%` }}
+                                />
+                              </div>
+                              <span className="text-[10px] text-blue-100 w-10 text-right font-mono">
+                                {(prob * 100).toFixed(1)}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Comparaciones individuales */}
+                      <div className="space-y-3">
+                        {others.map((other) => {
+                          const diff = ((primary.confidence - other.confidence) * 100);
+                          const sameResult = primary.severity === other.severity;
+
+                          return (
+                            <div key={other.model_name} className="border rounded-xl p-3 bg-white hover:shadow-md transition-shadow">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${sameResult ? 'bg-green-500' : 'bg-red-500'}`} />
+                                  <span className="font-semibold text-sm text-gray-800">{other.model_name}</span>
+                                  {sameResult && (
+                                    <Badge variant="outline" className="text-[9px] border-green-300 text-green-700 bg-green-50">
+                                      Coincide
+                                    </Badge>
+                                  )}
+                                  {!sameResult && (
+                                    <Badge variant="outline" className="text-[9px] border-red-300 text-red-700 bg-red-50">
+                                      Difiere
+                                    </Badge>
+                                  )}
+                                </div>
+                                <Badge className={`text-[10px] ${getSeverityColor(other.severity)}`}>
+                                  {getSeverityLabel(other.severity)}
+                                </Badge>
+                              </div>
+
+                              {/* Barra comparativa */}
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-blue-600 font-semibold w-16 flex-shrink-0">EffNet-B0</span>
+                                  <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full bg-blue-500 transition-all"
+                                      style={{ width: `${primary.confidence * 100}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] font-mono text-blue-700 w-12 text-right">
+                                    {(primary.confidence * 100).toFixed(1)}%
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-gray-500 w-16 flex-shrink-0 truncate" title={other.model_name}>
+                                    {other.model_name.replace(' + EA', '').replace('EfficientNet-B0', 'EffNet')}
+                                  </span>
+                                  <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full bg-gray-400 transition-all"
+                                      style={{ width: `${other.confidence * 100}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] font-mono text-gray-600 w-12 text-right">
+                                    {(other.confidence * 100).toFixed(1)}%
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Diferencia */}
+                              <div className="flex items-center justify-end gap-1 mt-1.5">
+                                {getDiffIcon(diff)}
+                                <span className={`text-[11px] font-semibold ${getDiffColor(diff)}`}>
+                                  {diff > 0 ? '+' : ''}{diff.toFixed(1)}% vs {other.model_name.replace(' + EA', '')}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Resumen del versus */}
+                      <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
+                        <div className="flex items-center gap-4 flex-wrap">
+                          <span>
+                            <strong className="text-gray-900">Coincidencias:</strong>{' '}
+                            {others.filter(o => o.severity === primary.severity).length}/{others.length} modelos
+                          </span>
+                          <span>
+                            <strong className="text-gray-900">Confianza promedio resto:</strong>{' '}
+                            {(others.reduce((s, o) => s + o.confidence, 0) / others.length * 100).toFixed(1)}%
+                          </span>
+                          <span>
+                            <strong className="text-gray-900">Ventaja promedio:</strong>{' '}
+                            <span className={getDiffColor((primary.confidence - others.reduce((s, o) => s + o.confidence, 0) / others.length) * 100)}>
+                              {((primary.confidence - others.reduce((s, o) => s + o.confidence, 0) / others.length) * 100) > 0 ? '+' : ''}
+                              {((primary.confidence - others.reduce((s, o) => s + o.confidence, 0) / others.length) * 100).toFixed(1)}%
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
 
               {/* Detalle por modelo */}
               <Card className="border-2 border-indigo-200 bg-indigo-50/30">

@@ -21,11 +21,18 @@ class GradCAM:
         self.model = model
         self.gradients = None
         self.activations = None
+        self._hooks = []
 
-        # Registrar hooks en la capa objetivo
+        # Registrar hooks en la capa objetivo (guardar handles para limpiar despues)
         target_layer = getattr(model, target_layer_name)
-        target_layer.register_forward_hook(self._save_activation)
-        target_layer.register_full_backward_hook(self._save_gradient)
+        self._hooks.append(target_layer.register_forward_hook(self._save_activation))
+        self._hooks.append(target_layer.register_full_backward_hook(self._save_gradient))
+
+    def remove_hooks(self):
+        """Elimina los hooks registrados para evitar acumulacion."""
+        for hook in self._hooks:
+            hook.remove()
+        self._hooks.clear()
 
     def _save_activation(self, module, input, output):
         self.activations = output.detach()
@@ -96,7 +103,10 @@ def generate_heatmap_overlay(
         predicted_class: Indice de la clase predicha
     """
     gradcam = GradCAM(model, target_layer_name='extra_conv10')
-    heatmap, predicted_class = gradcam.generate(input_tensor, target_class)
+    try:
+        heatmap, predicted_class = gradcam.generate(input_tensor, target_class)
+    finally:
+        gradcam.remove_hooks()
 
     # Abrir imagen original y redimensionar
     original = Image.open(io.BytesIO(original_image_bytes)).convert('RGB')
@@ -110,7 +120,7 @@ def generate_heatmap_overlay(
     ) / 255.0
 
     # Aplicar colormap jet
-    colormap = cm.get_cmap('jet')
+    colormap = matplotlib.colormaps['jet']
     heatmap_colored = colormap(heatmap_resized)[:, :, :3]  # RGB, sin alpha
     heatmap_colored = (heatmap_colored * 255).astype(np.uint8)
 

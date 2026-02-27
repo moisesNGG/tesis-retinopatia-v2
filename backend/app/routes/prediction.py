@@ -79,7 +79,7 @@ async def predict_retinopathy(image: UploadFile = File(...)):
 
 
 @router.post("/report")
-async def generate_report(image: UploadFile = File(...)):
+async def generate_pdf_report(image: UploadFile = File(...)):
     """Genera un reporte PDF con el analisis completo de la imagen."""
 
     if not image.content_type or not image.content_type.startswith('image/'):
@@ -99,44 +99,54 @@ async def generate_report(image: UploadFile = File(...)):
 
     contents = await image.read()
 
-    # Ejecutar prediccion completa
-    raw_results = model_service.predict_all(contents)
-    results = [SingleModelResult(**r) for r in raw_results]
-    validity = model_service.check_retinal_validity(raw_results)
-    consensus = _compute_consensus(results)
+    try:
+        # Ejecutar prediccion completa
+        raw_results = model_service.predict_all(contents)
+        results = [SingleModelResult(**r) for r in raw_results]
+        validity = model_service.check_retinal_validity(raw_results)
+        consensus = _compute_consensus(results)
 
-    # Grad-CAM
-    gradcam_overlay_b64 = None
-    if validity['is_retinal']:
-        gradcam_result = model_service.predict_with_gradcam(contents)
-        if gradcam_result:
-            gradcam_overlay_b64 = gradcam_result['overlay_base64']
+        # Grad-CAM
+        gradcam_overlay_b64 = None
+        if validity['is_retinal']:
+            try:
+                gradcam_result = model_service.predict_with_gradcam(contents)
+                if gradcam_result:
+                    gradcam_overlay_b64 = gradcam_result['overlay_base64']
+            except Exception as e:
+                print(f"[WARN] Grad-CAM fallo en reporte, continuando sin heatmap: {e}")
 
-    # Generar PDF
-    from app.services.pdf_service import generate_report
-    pdf_bytes = generate_report(
-        image_bytes=contents,
-        filename=image.filename or "imagen.jpg",
-        results=raw_results,
-        consensus={
-            'prediction': consensus.prediction,
-            'severity': consensus.severity,
-            'confidence': consensus.confidence,
-            'agreement_count': consensus.agreement_count,
-            'total_models': consensus.total_models,
-            'recommendation': consensus.recommendation,
-        },
-        is_retinal=validity['is_retinal'],
-        gradcam_overlay_b64=gradcam_overlay_b64,
-    )
+        # Generar PDF
+        from app.services.pdf_service import generate_report as build_pdf
+        pdf_bytes = build_pdf(
+            image_bytes=contents,
+            filename=image.filename or "imagen.jpg",
+            results=raw_results,
+            consensus={
+                'prediction': consensus.prediction,
+                'severity': consensus.severity,
+                'confidence': consensus.confidence,
+                'agreement_count': consensus.agreement_count,
+                'total_models': consensus.total_models,
+                'recommendation': consensus.recommendation,
+            },
+            is_retinal=validity['is_retinal'],
+            gradcam_overlay_b64=gradcam_overlay_b64,
+        )
 
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'attachment; filename="reporte_retinopatia.pdf"'
-        },
-    )
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="reporte_retinopatia.pdf"'
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error al generar el reporte: {str(e)}")
 
 
 def _compute_consensus(results: list[SingleModelResult]) -> ConsensusResult:
