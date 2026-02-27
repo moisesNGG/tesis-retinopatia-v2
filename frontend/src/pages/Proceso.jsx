@@ -11,14 +11,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '..
 import {
   Upload, Image as ImageIcon, AlertCircle, CheckCircle2, Loader2,
   ShieldCheck, Info, Download, RotateCcw, AlertTriangle, Activity, Eye,
-  Swords, Crown, TrendingUp, TrendingDown, Minus, Cpu,
+  Swords, TrendingUp, TrendingDown, Minus, Cpu,
 } from 'lucide-react';
 import { pagesAPI, predictionAPI } from '../services/api';
 import Hero from '../components/sections/Hero';
 import ContentSection from '../components/sections/ContentSection';
 
 const CLASS_LABELS = [
-  'Sin Retinopatia',
+  'No Corresponde a RD',
   'RD Leve',
   'RD Moderada',
   'RD Severa',
@@ -218,7 +218,7 @@ const Proceso = () => {
 
   const getSeverityLabel = (severity) => {
     const labels = {
-      none: 'Sin Retinopatia',
+      none: 'No Corresponde a RD',
       mild: 'Leve',
       moderate: 'Moderada',
       severe: 'Severa',
@@ -768,18 +768,17 @@ const Proceso = () => {
                         EfficientNet-B0 + EA vs Todos los Modelos
                       </CardTitle>
                       <p className="text-xs text-gray-500">
-                        Comparacion de confianza del modelo principal contra cada modelo del ensemble
+                        Comparacion de confianza entre cada modelo del ensemble
                       </p>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {/* Modelo principal destacado */}
+                      {/* EfficientNet-B0 + EA */}
                       <div className="bg-blue-600 text-white rounded-xl p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Crown className="h-5 w-5 text-yellow-300" />
                             <div>
                               <p className="font-bold text-sm">{primary.model_name}</p>
-                              <p className="text-blue-200 text-xs">Modelo principal del sistema</p>
+                              <p className="text-blue-200 text-xs">Modelo de referencia para comparacion</p>
                             </div>
                           </div>
                           <div className="text-right">
@@ -898,7 +897,7 @@ const Proceso = () => {
                             {(others.reduce((s, o) => s + o.confidence, 0) / others.length * 100).toFixed(1)}%
                           </span>
                           <span>
-                            <strong className="text-gray-900">Ventaja promedio:</strong>{' '}
+                            <strong className="text-gray-900">Diferencia promedio:</strong>{' '}
                             <span className={getDiffColor((primary.confidence - others.reduce((s, o) => s + o.confidence, 0) / others.length) * 100)}>
                               {((primary.confidence - others.reduce((s, o) => s + o.confidence, 0) / others.length) * 100) > 0 ? '+' : ''}
                               {((primary.confidence - others.reduce((s, o) => s + o.confidence, 0) / others.length) * 100).toFixed(1)}%

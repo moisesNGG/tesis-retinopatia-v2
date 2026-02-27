@@ -4,7 +4,7 @@
   "architecture": "YOLOv8x Classification (Ultralytics)",
   "dataset": "RD_FINAL_V50K (50,000 images)",
   "class_names": [
-    "Sin Retinopatia",
+    "No Corresponde a RD",
     "RD Leve",
     "RD Moderada",
     "RD Severa",

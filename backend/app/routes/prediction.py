@@ -240,7 +240,7 @@ def _compute_consensus(results: list[SingleModelResult]) -> ConsensusResult:
 
 def _get_recommendation(severity: str) -> str:
     recommendations = {
-        'none': 'No se detectaron signos de retinopatia diabetica. Se recomienda control anual de rutina.',
+        'none': 'La imagen no corresponde a una retinografia. Suba una imagen de fondo de ojo para obtener un diagnostico.',
         'mild': 'Se detectaron signos leves de retinopatia diabetica. Consulte con su oftalmologo para evaluacion y seguimiento.',
         'moderate': 'Se detectaron signos moderados de retinopatia diabetica. Se recomienda consulta con oftalmologo a la brevedad.',
         'severe': 'Se detectaron signos severos de retinopatia diabetica. Se requiere atencion oftalmologica urgente.',

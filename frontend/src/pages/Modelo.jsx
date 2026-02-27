@@ -256,14 +256,13 @@ const Modelo = () => {
                     const color = MODEL_COLORS_GRADIENT[key] || 'from-gray-500 to-gray-600';
                     const isTop = m.metrics.accuracy === Math.max(...modelKeys.map(k => metricsData[k].metrics.accuracy));
                     return (
-                      <tr key={key} className={`border-b ${isTop ? 'bg-blue-50/50' : 'hover:bg-gray-50'}`}>
+                      <tr key={key} className="border-b hover:bg-gray-50">
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-2">
                             <div className={`w-6 h-6 bg-gradient-to-br ${color} rounded flex items-center justify-center flex-shrink-0`}>
                               <Icon className="h-3 w-3 text-white" />
                             </div>
                             <span className="font-medium text-gray-900 text-xs sm:text-sm">{m.display_name}</span>
-                            {isTop && <Badge className="text-[9px] bg-blue-100 text-blue-700 hidden sm:inline-flex">Mejor</Badge>}
                           </div>
                         </td>
                         <td className="text-center py-3 px-2 font-mono font-semibold text-xs sm:text-sm">{m.metrics.accuracy.toFixed(2)}%</td>
@@ -675,7 +674,7 @@ const Modelo = () => {
             El ensemble clasifica las imagenes en 5 categorias de severidad
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            <Badge variant="outline" className="py-1.5 px-3 text-sm shadow-sm">Sin Retinopatia</Badge>
+            <Badge variant="outline" className="py-1.5 px-3 text-sm shadow-sm">No Corresponde a RD</Badge>
             <Badge variant="outline" className="py-1.5 px-3 text-sm bg-yellow-50 shadow-sm">RD Leve</Badge>
             <Badge variant="outline" className="py-1.5 px-3 text-sm bg-orange-50 shadow-sm">RD Moderada</Badge>
             <Badge variant="outline" className="py-1.5 px-3 text-sm bg-red-50 shadow-sm">RD Severa</Badge>

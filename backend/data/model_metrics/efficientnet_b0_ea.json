@@ -4,7 +4,7 @@
   "architecture": "EfficientNet-B0 + 10 Conv Layers + External Attention",
   "dataset": "RD_FINAL_V50K (50,000 images)",
   "class_names": [
-    "Sin Retinopatia",
+    "No Corresponde a RD",
     "RD Leve",
     "RD Moderada",
     "RD Severa",
