@@ -5,6 +5,7 @@ from app.models.prediction import (
     ConsensusResult,
     RetinalValidation,
     MultiModelPredictionResponse,
+    CustomModelResponse,
 )
 from app.services.model_service import model_service
 from collections import Counter
@@ -75,6 +76,60 @@ async def predict_retinopathy(image: UploadFile = File(...)):
         retinal_validation=retinal_validation,
         gradcam_overlay=gradcam_overlay,
         gradcam_model=gradcam_model,
+    )
+
+
+@router.post("/custom-model", response_model=CustomModelResponse)
+async def predict_custom_model(image: UploadFile = File(...)):
+    """Prediccion usando solo EfficientNet-B0+EA (modelo personalizado)"""
+
+    if not image.content_type or not image.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="El archivo debe ser una imagen")
+
+    if model_service.loading:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Los modelos de IA se estan cargando ({model_service.models_loaded_count}/5).",
+        )
+
+    if not model_service.loaded:
+        raise HTTPException(
+            status_code=503,
+            detail="Los modelos de IA no pudieron cargarse.",
+        )
+
+    contents = await image.read()
+
+    try:
+        result = model_service.predict_single_efficientnet(contents)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    # Validar si es retinal usando solo este modelo
+    import math
+    probs = result.get('probabilities', [])
+    confidence = result.get('confidence', 0.0)
+    entropy = -sum(p * math.log(p + 1e-10) for p in probs) if probs else 0.0
+    is_retinal = not (confidence < 0.45 and entropy > 1.3)
+
+    # Grad-CAM
+    gradcam_overlay = None
+    if is_retinal:
+        gradcam_result = model_service.predict_with_gradcam(contents)
+        if gradcam_result:
+            gradcam_overlay = gradcam_result['overlay_base64']
+
+    return CustomModelResponse(
+        model_name=result['model_name'],
+        architecture=result['architecture'],
+        prediction=result['prediction'],
+        confidence=result['confidence'],
+        severity=result['severity'],
+        probabilities=result['probabilities'],
+        preprocessing=result['preprocessing'],
+        gradcam_overlay=gradcam_overlay,
+        is_retinal=is_retinal,
+        image_filename=image.filename or "imagen.jpg",
     )
 
 

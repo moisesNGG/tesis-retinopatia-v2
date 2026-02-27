@@ -11,7 +11,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '..
 import {
   Upload, Image as ImageIcon, AlertCircle, CheckCircle2, Loader2,
   ShieldCheck, Info, Download, RotateCcw, AlertTriangle, Activity, Eye,
-  Swords, Crown, TrendingUp, TrendingDown, Minus,
+  Swords, Crown, TrendingUp, TrendingDown, Minus, Cpu,
 } from 'lucide-react';
 import { pagesAPI, predictionAPI } from '../services/api';
 import Hero from '../components/sections/Hero';
@@ -45,6 +45,9 @@ const Proceso = () => {
   const [showConsentDialog, setShowConsentDialog] = useState(false);
   const [consentChoice, setConsentChoice] = useState(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [customResult, setCustomResult] = useState(null);
+  const [analyzingCustom, setAnalyzingCustom] = useState(false);
+  const [customProgressValue, setCustomProgressValue] = useState(0);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -102,6 +105,7 @@ const Proceso = () => {
       setSelectedFile(file);
       setError(null);
       setResult(null);
+      setCustomResult(null);
 
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -139,6 +143,34 @@ const Proceso = () => {
     }
   };
 
+  const handleAnalyzeCustom = async () => {
+    if (!selectedFile) {
+      setError('Por favor selecciona una imagen primero');
+      return;
+    }
+
+    setAnalyzingCustom(true);
+    setError(null);
+    setCustomResult(null);
+    setCustomProgressValue(10);
+
+    const progressInterval = setInterval(() => {
+      setCustomProgressValue((prev) => (prev < 85 ? prev + 7 : prev));
+    }, 600);
+
+    try {
+      const data = await predictionAPI.analyzeCustomModel(selectedFile);
+      setCustomProgressValue(100);
+      setCustomResult(data);
+    } catch (err) {
+      setError(err.message || 'Error al analizar con modelo personalizado.');
+      console.error(err);
+    } finally {
+      clearInterval(progressInterval);
+      setAnalyzingCustom(false);
+    }
+  };
+
   const handleDownloadPdf = async () => {
     if (!selectedFile) return;
     setDownloadingPdf(true);
@@ -164,8 +196,10 @@ const Proceso = () => {
     setSelectedFile(null);
     setPreview(null);
     setResult(null);
+    setCustomResult(null);
     setError(null);
     setProgressValue(0);
+    setCustomProgressValue(0);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -290,32 +324,53 @@ const Proceso = () => {
                         className="w-full h-auto max-h-96 object-contain mx-auto"
                       />
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex gap-3">
+                        <Button
+                          onClick={handleAnalyze}
+                          disabled={analyzing || analyzingCustom}
+                          className="flex-1"
+                          size="lg"
+                        >
+                          {analyzing ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Analizando...
+                            </>
+                          ) : (
+                            <>
+                              <ImageIcon className="mr-2 h-4 w-4" />
+                              Analizar Imagen
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          onClick={resetAnalysis}
+                          variant="outline"
+                          disabled={analyzing || analyzingCustom}
+                          size="lg"
+                        >
+                          Cambiar Imagen
+                        </Button>
+                      </div>
                       <Button
-                        onClick={handleAnalyze}
-                        disabled={analyzing}
-                        className="flex-1"
+                        onClick={handleAnalyzeCustom}
+                        disabled={analyzing || analyzingCustom}
+                        variant="outline"
                         size="lg"
+                        className="w-full border-indigo-300 text-indigo-700 hover:bg-indigo-50"
                       >
-                        {analyzing ? (
+                        {analyzingCustom ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Analizando...
+                            Analizando con modelo personalizado...
                           </>
                         ) : (
                           <>
-                            <ImageIcon className="mr-2 h-4 w-4" />
-                            Analizar Imagen
+                            <Cpu className="mr-2 h-4 w-4" />
+                            Analisis con Modelo Personalizado
                           </>
                         )}
-                      </Button>
-                      <Button
-                        onClick={resetAnalysis}
-                        variant="outline"
-                        disabled={analyzing}
-                        size="lg"
-                      >
-                        Cambiar Imagen
                       </Button>
                     </div>
                   </div>
@@ -341,12 +396,183 @@ const Proceso = () => {
             </Card>
           )}
 
+          {/* Progress: Modelo Personalizado */}
+          {analyzingCustom && (
+            <Card className="mb-6 border-indigo-200">
+              <CardContent className="pt-6">
+                <div className="space-y-3">
+                  <p className="text-sm text-indigo-700 text-center font-medium">
+                    Analizando imagen con EfficientNet-B0 + EA...
+                  </p>
+                  <Progress value={customProgressValue} className="w-full" />
+                  <p className="text-xs text-gray-400 text-center">
+                    Modelo personalizado con Grad-CAM (10-20 segundos)
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Error */}
           {error && (
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
+          )}
+
+          {/* Resultados: Modelo Personalizado */}
+          {customResult && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-2 mb-1">
+                <Cpu className="h-5 w-5 text-indigo-600" />
+                <h2 className="text-lg font-bold text-indigo-900">Resultado del Modelo Personalizado</h2>
+              </div>
+
+              {/* Warning: No es retinografia */}
+              {!customResult.is_retinal && (
+                <Alert variant="destructive" className="border-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  <AlertDescription className="text-sm">
+                    <strong>Esta imagen no parece ser una retinografia valida.</strong>
+                    <br />
+                    El modelo detecto baja confianza ({(customResult.confidence * 100).toFixed(1)}%).
+                    Los resultados pueden no ser confiables.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Grid 2x2 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Panel 1: Imagen original */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4" />
+                      Imagen Original
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-lg overflow-hidden bg-gray-100">
+                      <img
+                        src={preview}
+                        alt="Imagen original"
+                        className="w-full h-auto max-h-64 object-contain mx-auto"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Panel 2: Grad-CAM */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Eye className="h-4 w-4" />
+                      Mapa de Calor (Grad-CAM)
+                      <Badge variant="outline" className="text-[10px] ml-auto">
+                        {customResult.model_name}
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-lg overflow-hidden bg-gray-100">
+                      {customResult.gradcam_overlay ? (
+                        <img
+                          src={`data:image/jpeg;base64,${customResult.gradcam_overlay}`}
+                          alt="Grad-CAM heatmap"
+                          className="w-full h-auto max-h-64 object-contain mx-auto"
+                        />
+                      ) : (
+                        <div className="h-48 flex items-center justify-center text-gray-400 text-sm">
+                          Mapa de calor no disponible
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-2">
+                      Las zonas rojas/amarillas indican las regiones que mas influyeron en la prediccion.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Panel 3: Barras de probabilidad por clase */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Activity className="h-4 w-4" />
+                      Probabilidades por Clase
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {CLASS_LABELS.map((label, i) => {
+                        const prob = customResult.probabilities?.[i] || 0;
+                        const pct = (prob * 100).toFixed(1);
+                        return (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="text-xs text-gray-600 w-24 text-right flex-shrink-0">
+                              {label}
+                            </span>
+                            <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${CLASS_COLORS[i].bg}`}
+                                style={{ width: `${Math.max(prob * 100, 0.5)}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-gray-600 w-12 text-right font-mono">
+                              {pct}%
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-2">Modelo unico: {customResult.model_name}</p>
+                  </CardContent>
+                </Card>
+
+                {/* Panel 4: Diagnostico */}
+                <Card className="border-2 border-indigo-200">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm">Diagnostico Individual</CardTitle>
+                      <Cpu className="h-5 w-5 text-indigo-600" />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Badge className={`text-base py-1.5 px-4 ${getSeverityColor(customResult.severity)}`}>
+                      {customResult.prediction}
+                    </Badge>
+                    <div className="bg-gray-50 rounded-lg p-2">
+                      <p className="text-gray-500 text-xs">Confianza</p>
+                      <p className="font-bold text-gray-900">
+                        {(customResult.confidence * 100).toFixed(1)}%
+                      </p>
+                    </div>
+
+                    {/* Info de preprocesamiento */}
+                    <div className="bg-indigo-50 rounded-lg p-3 space-y-1.5">
+                      <p className="text-xs font-semibold text-indigo-800">Preprocesamiento</p>
+                      <div className="grid grid-cols-2 gap-1 text-[11px] text-indigo-700">
+                        <span>Entrada: {customResult.preprocessing?.input_size}</span>
+                        <span>Color: {customResult.preprocessing?.color_space}</span>
+                        <span>Normalizacion: {customResult.preprocessing?.normalization}</span>
+                      </div>
+                    </div>
+
+                    {/* Info de arquitectura */}
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs font-semibold text-gray-700 mb-1">Arquitectura</p>
+                      <p className="text-[11px] text-gray-600">{customResult.architecture}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Disclaimer */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-900">
+                <strong>Importante:</strong> Este resultado proviene de un unico modelo de IA
+                y tiene fines academicos. No sustituye el diagnostico de un profesional medico.
+              </div>
+            </div>
           )}
 
           {/* Results */}

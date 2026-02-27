@@ -25,6 +25,19 @@ class RetinalValidation(BaseModel):
     avg_entropy: float
 
 
+class CustomModelResponse(BaseModel):
+    model_name: str
+    architecture: str
+    prediction: str
+    confidence: float
+    severity: str
+    probabilities: List[float]
+    preprocessing: dict
+    gradcam_overlay: Optional[str] = None
+    is_retinal: bool
+    image_filename: str
+
+
 class MultiModelPredictionResponse(BaseModel):
     results: List[SingleModelResult]
     consensus: ConsensusResult

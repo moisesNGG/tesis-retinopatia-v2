@@ -491,6 +491,39 @@ class ModelService:
         }
 
     # -------------------------------------------------------------------
+    # Prediccion individual con EfficientNet-B0+EA (modelo personalizado)
+    # -------------------------------------------------------------------
+    def predict_single_efficientnet(self, image_bytes: bytes) -> dict:
+        """
+        Ejecuta prediccion usando solo EfficientNet-B0+EA.
+        Retorna resultado con info de preprocesamiento y arquitectura.
+        """
+        model_name = 'EfficientNet-B0 + EA'
+        if model_name not in self.models:
+            raise RuntimeError(f"{model_name} no esta disponible")
+
+        input_tensor = preprocess_image(image_bytes)
+        result = self._predict_pytorch(self.models[model_name]['model'], input_tensor)
+        result['model_name'] = model_name
+
+        # Info de preprocesamiento
+        result['preprocessing'] = {
+            'input_size': '224x224',
+            'normalization': 'ImageNet',
+            'mean': _IMAGENET_MEAN,
+            'std': _IMAGENET_STD,
+            'color_space': 'RGB',
+        }
+
+        # Info de arquitectura
+        result['architecture'] = (
+            'EfficientNet-B0 backbone + 10 Conv Layers (SiLU) + '
+            'External Attention (8 heads, dim 32) + Classifier (256→512→5)'
+        )
+
+        return result
+
+    # -------------------------------------------------------------------
     # Grad-CAM con EfficientNet-B0+EA
     # -------------------------------------------------------------------
     def predict_with_gradcam(self, image_bytes: bytes) -> dict | None:

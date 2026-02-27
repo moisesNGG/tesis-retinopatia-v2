@@ -123,6 +123,25 @@ export const predictionAPI = {
     return response.json();
   },
 
+  analyzeCustomModel: async (imageFile) => {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+
+    const CUSTOM_MODEL_URL = `${window.location.origin}/api/predict/custom-model`;
+
+    const response = await fetch(CUSTOM_MODEL_URL, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Error en el analisis con modelo personalizado');
+    }
+
+    return response.json();
+  },
+
   downloadReport: async (imageFile) => {
     const formData = new FormData();
     formData.append('image', imageFile);
