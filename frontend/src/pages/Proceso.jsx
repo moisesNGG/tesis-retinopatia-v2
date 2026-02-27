@@ -228,7 +228,7 @@ const Proceso = () => {
       )}
 
       <div id="analizar" className="bg-gradient-to-b from-blue-50 to-white py-8">
-        <div className="container max-w-5xl">
+        <div className="container max-w-5xl mx-auto">
           {!pageData.heroImage && (
             <div className="text-center mb-8">
               <h1 className="text-4xl font-bold text-gray-900 mb-3">
@@ -518,18 +518,13 @@ const Proceso = () => {
                 <Accordion type="single" collapsible>
                   <AccordionItem value="model-details" className="border-none">
                     <AccordionTrigger className="px-5 py-4 hover:no-underline">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-indigo-100 p-2 rounded-lg">
-                          <Activity className="h-5 w-5 text-indigo-600" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-base font-bold text-indigo-900">
-                            Resultados Detallados por Modelo
-                          </p>
-                          <p className="text-xs text-indigo-600 font-normal">
-                            Ver prediccion individual de cada uno de los {result.results.length} modelos
-                          </p>
-                        </div>
+                      <div className="text-left">
+                        <p className="text-base font-bold text-indigo-900">
+                          Resultados Detallados por Modelo
+                        </p>
+                        <p className="text-xs text-indigo-600 font-normal">
+                          Ver prediccion individual de cada uno de los {result.results.length} modelos
+                        </p>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-5 pb-5">
