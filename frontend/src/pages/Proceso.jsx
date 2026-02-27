@@ -513,56 +513,70 @@ const Proceso = () => {
                 </Card>
               )}
 
-              {/* Detalle por modelo en Accordion */}
-              <Accordion type="single" collapsible>
-                <AccordionItem value="model-details">
-                  <AccordionTrigger className="text-sm font-semibold">
-                    Resultados Detallados por Modelo ({result.results.length} modelos)
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                      {result.results.map((r) => (
-                        <Card key={r.model_name} className="overflow-hidden">
-                          <CardHeader className="pb-2 pt-4 px-4">
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold text-sm text-gray-900">{r.model_name}</span>
-                              <Badge className={`text-xs ${getSeverityColor(r.severity)}`}>
-                                {getSeverityLabel(r.severity)}
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              Confianza: {(r.confidence * 100).toFixed(1)}%
-                            </p>
-                          </CardHeader>
-                          <CardContent className="px-4 pb-4 pt-1">
-                            <div className="space-y-1.5">
-                              {r.probabilities && r.probabilities.map((prob, i) => {
-                                const pct = (prob * 100).toFixed(1);
-                                return (
-                                  <div key={i} className="flex items-center gap-2">
-                                    <span className="text-[11px] text-gray-500 w-20 text-right flex-shrink-0 truncate">
-                                      {CLASS_LABELS[i]}
-                                    </span>
-                                    <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
-                                      <div
-                                        className={`h-full rounded-full transition-all ${CLASS_COLORS[i].bg}`}
-                                        style={{ width: `${Math.max(prob * 100, 0.5)}%` }}
-                                      />
+              {/* Detalle por modelo */}
+              <Card className="border-2 border-indigo-200 bg-indigo-50/30">
+                <Accordion type="single" collapsible>
+                  <AccordionItem value="model-details" className="border-none">
+                    <AccordionTrigger className="px-5 py-4 hover:no-underline">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-indigo-100 p-2 rounded-lg">
+                          <Activity className="h-5 w-5 text-indigo-600" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-base font-bold text-indigo-900">
+                            Resultados Detallados por Modelo
+                          </p>
+                          <p className="text-xs text-indigo-600 font-normal">
+                            Ver prediccion individual de cada uno de los {result.results.length} modelos
+                          </p>
+                        </div>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-5 pb-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        {result.results.map((r) => (
+                          <Card key={r.model_name} className="overflow-hidden bg-white">
+                            <CardHeader className="pb-2 pt-4 px-4">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-sm text-gray-900">{r.model_name}</span>
+                                <Badge className={`text-xs ${getSeverityColor(r.severity)}`}>
+                                  {getSeverityLabel(r.severity)}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Confianza: {(r.confidence * 100).toFixed(1)}%
+                              </p>
+                            </CardHeader>
+                            <CardContent className="px-4 pb-4 pt-1">
+                              <div className="space-y-1.5">
+                                {r.probabilities && r.probabilities.map((prob, i) => {
+                                  const pct = (prob * 100).toFixed(1);
+                                  return (
+                                    <div key={i} className="flex items-center gap-2">
+                                      <span className="text-[11px] text-gray-500 w-20 text-right flex-shrink-0 truncate">
+                                        {CLASS_LABELS[i]}
+                                      </span>
+                                      <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
+                                        <div
+                                          className={`h-full rounded-full transition-all ${CLASS_COLORS[i].bg}`}
+                                          style={{ width: `${Math.max(prob * 100, 0.5)}%` }}
+                                        />
+                                      </div>
+                                      <span className="text-[11px] text-gray-600 w-11 text-right flex-shrink-0 font-mono">
+                                        {pct}%
+                                      </span>
                                     </div>
-                                    <span className="text-[11px] text-gray-600 w-11 text-right flex-shrink-0 font-mono">
-                                      {pct}%
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+                                  );
+                                })}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </Card>
 
               {/* Disclaimer */}
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-900">

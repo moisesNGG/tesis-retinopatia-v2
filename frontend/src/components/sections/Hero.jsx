@@ -17,7 +17,7 @@ const Hero = ({ title, subtitle, image, imageStyle = "cover", ctaText = "Comenza
     }
   };
   return (
-    <section className="relative bg-gradient-to-br from-blue-50 via-white to-blue-50/30 py-10 md:py-16">
+    <section className="relative bg-gradient-to-br from-blue-50 via-white to-blue-50/30 py-10 md:py-16 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
           <div className="space-y-4">
@@ -51,7 +51,7 @@ const Hero = ({ title, subtitle, image, imageStyle = "cover", ctaText = "Comenza
           </div>
 
           {image && (
-            <div className="relative lg:pl-8">
+            <div className="relative lg:pl-8 overflow-hidden">
               <div className={`relative ${imageStyle === 'original' ? '' : 'aspect-[4/3]'} rounded-xl overflow-hidden shadow-2xl border border-gray-200 bg-gray-50 flex items-center justify-center`}>
                 <img
                   src={image}
@@ -60,8 +60,8 @@ const Hero = ({ title, subtitle, image, imageStyle = "cover", ctaText = "Comenza
                 />
                 <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/10 to-transparent pointer-events-none" />
               </div>
-              <div className="absolute -bottom-3 -right-3 w-48 h-48 bg-blue-400/20 rounded-full blur-3xl -z-10" />
-              <div className="absolute -top-3 -left-3 w-32 h-32 bg-purple-400/20 rounded-full blur-2xl -z-10" />
+              <div className="absolute bottom-0 right-0 w-48 h-48 bg-blue-400/20 rounded-full blur-3xl -z-10" />
+              <div className="absolute top-0 left-0 w-32 h-32 bg-purple-400/20 rounded-full blur-2xl -z-10" />
             </div>
           )}
         </div>
