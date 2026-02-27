@@ -97,7 +97,7 @@ async def init_database():
             "sections": [
                 {
                     "title": "Arquitectura del Modelo",
-                    "content": "El modelo utiliza una arquitectura de Red Neuronal Convolucional (CNN) basada en ResNet50, pre-entrenada en ImageNet y ajustada especificamente para imagenes de fondo de ojo. Esta arquitectura permite extraer caracteristicas complejas de las imagenes para identificar patrones asociados con retinopatia diabetica.",
+                    "content": "El sistema utiliza un ensemble de 5 modelos de deep learning: DenseNet121 + EA, EfficientNet-B0 + EA, ResNet50 + EA, ViT-B/16 + EA y YOLOv8x-cls. Los primeros 4 incorporan 10 capas convolucionales adicionales y un mecanismo de External Attention. Todos fueron pre-entrenados en ImageNet y ajustados para imagenes de fondo de ojo.",
                     "image": "https://images.unsplash.com/photo-1655393001768-d946c97d6fd1?w=600&q=80",
                     "imageStyle": "cover",
                     "layout": "horizontal",
@@ -105,7 +105,7 @@ async def init_database():
                 },
                 {
                     "title": "Proceso de Entrenamiento",
-                    "content": "El modelo fue entrenado con mas de 35,000 imagenes de retina clasificadas por oftalmologos expertos. Se utilizaron tecnicas de data augmentation para mejorar la generalizacion y evitar el sobreajuste. El entrenamiento se realizo durante 100 epocas con validacion cruzada.",
+                    "content": "Los 5 modelos fueron entrenados con el dataset RD_FINAL_V50K de 50,000 imagenes de retina clasificadas por oftalmologos expertos. Se utilizaron tecnicas de data augmentation para mejorar la generalizacion y evitar el sobreajuste.",
                     "image": "https://images.unsplash.com/photo-1509228468518-180dd4864904?w=600&q=80",
                     "imageStyle": "cover",
                     "layout": "horizontal",
@@ -113,7 +113,7 @@ async def init_database():
                 },
                 {
                     "title": "Validacion y Pruebas",
-                    "content": "El modelo fue validado con un conjunto de datos independiente que nunca vio durante el entrenamiento. Se evaluaron multiples metricas incluyendo precision, sensibilidad, especificidad y area bajo la curva ROC (AUC). Los resultados demuestran un rendimiento comparable a oftalmologos experimentados.",
+                    "content": "Los 5 modelos (DenseNet121 + EA, EfficientNet-B0 + EA, ResNet50 + EA, ViT-B/16 + EA y YOLOv8x-cls) fueron validados con un conjunto de datos independiente. Se evaluaron metricas de precision, sensibilidad, especificidad y AUC. El diagnostico final se determina por voto de consenso entre los 5 modelos.",
                     "image": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&q=80",
                     "imageStyle": "cover",
                     "layout": "horizontal",
