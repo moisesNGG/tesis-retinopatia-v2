@@ -1,6 +1,6 @@
 import React from 'react';
 
-const CLASS_SHORT = ['Sin RD', 'Leve', 'Moderada', 'Severa', 'Proliferativa'];
+const CLASS_SHORT = ['Sin Retinopatia', 'Leve', 'Moderada', 'Severa', 'Proliferativa'];
 
 const ConfusionMatrix = ({ matrix, classNames = CLASS_SHORT }) => {
   if (!matrix || matrix.length === 0) return null;

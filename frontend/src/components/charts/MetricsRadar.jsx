@@ -9,7 +9,7 @@ import {
   Tooltip,
 } from 'recharts';
 
-const CLASS_SHORT = ['Sin RD', 'Leve', 'Moderada', 'Severa', 'Prolif.'];
+const CLASS_SHORT = ['Sin Retinopatia', 'Leve', 'Moderada', 'Severa', 'Prolif.'];
 
 const MetricsRadar = ({ perClassMetrics, classNames = CLASS_SHORT }) => {
   if (!perClassMetrics) return null;

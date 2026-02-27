@@ -18,7 +18,7 @@ import Hero from '../components/sections/Hero';
 import ContentSection from '../components/sections/ContentSection';
 
 const CLASS_LABELS = [
-  'Sin RD',
+  'Sin Retinopatia',
   'RD Leve',
   'RD Moderada',
   'RD Severa',
@@ -218,7 +218,7 @@ const Proceso = () => {
 
   const getSeverityLabel = (severity) => {
     const labels = {
-      none: 'Sin RD',
+      none: 'Sin Retinopatia',
       mild: 'Leve',
       moderate: 'Moderada',
       severe: 'Severa',

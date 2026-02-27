@@ -26,7 +26,7 @@ CLASS_LABELS = [
     'RD Proliferativa',
 ]
 
-CLASS_LABELS_SHORT = ['Sin RD', 'Leve', 'Moderada', 'Severa', 'Proliferativa']
+CLASS_LABELS_SHORT = ['Sin Retinopatia', 'Leve', 'Moderada', 'Severa', 'Proliferativa']
 
 SEVERITY_LABELS = {
     'none': 'Sin Retinopatia Diabetica',
@@ -168,7 +168,7 @@ def _create_agreement_chart(results: list[dict], consensus_severity: str) -> str
     counts = []
     colors = []
     label_map = {
-        'none': 'Sin RD', 'mild': 'Leve', 'moderate': 'Moderada',
+        'none': 'Sin Retinopatia', 'mild': 'Leve', 'moderate': 'Moderada',
         'severe': 'Severa', 'proliferative': 'Proliferativa',
     }
 
@@ -533,7 +533,7 @@ def generate_report(
         pdf.section_title('Escala de Clasificacion')
 
         scale_items = [
-            ('0 - Sin RD', 'none', 'No se observan anomalias retinales'),
+            ('0 - Sin Retinopatia', 'none', 'No se observan anomalias retinales'),
             ('1 - RD Leve', 'mild', 'Microaneurismas aislados'),
             ('2 - RD Moderada', 'moderate', 'Hemorragias retinales y exudados moderados'),
             ('3 - RD Severa', 'severe', 'Hemorragias extensas, IRMA, arrosariamiento venoso'),
