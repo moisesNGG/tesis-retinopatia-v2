@@ -66,13 +66,29 @@ SEVERITY_BG_COLORS = {
     'proliferative': (254, 202, 202),
 }
 
+SEVERITY_COLOR_HEX = {
+    'none': '#22C55E', 'mild': '#EAB308', 'moderate': '#F97316',
+    'severe': '#EF4444', 'proliferative': '#B91C1C',
+}
+
 # Colores para graficas (azul, verde, naranja, rojo, morado)
 MODEL_COLORS = ['#1E40AF', '#059669', '#D97706', '#DC2626', '#7C3AED']
 
 
+# ---------------------------------------------------------------------------
+# Utilidad: calcular alto de imagen en mm dado el ancho deseado en mm
+# ---------------------------------------------------------------------------
+def _image_height_mm(image_path: str, target_width_mm: float) -> float:
+    """Retorna la altura en mm que tendra la imagen al renderizarse con target_width_mm."""
+    with Image.open(image_path) as img:
+        w_px, h_px = img.size
+    return target_width_mm * h_px / w_px
+
+
+# ---------------------------------------------------------------------------
+# Generadores de graficas
+# ---------------------------------------------------------------------------
 def _create_probability_chart(results: list[dict]) -> str:
-    """Crea grafica de barras agrupadas de probabilidades por modelo.
-    Retorna path a imagen temporal PNG."""
     fig, ax = plt.subplots(figsize=(7.5, 3.0), dpi=150)
 
     n_classes = len(CLASS_LABELS_SHORT)
@@ -84,10 +100,10 @@ def _create_probability_chart(results: list[dict]) -> str:
         probs = r.get('probabilities', [0] * n_classes)
         probs_pct = [p * 100 for p in probs]
         offset = (i - n_models / 2 + 0.5) * bar_width
-        bars = ax.bar(x + offset, probs_pct, bar_width,
-                      label=r.get('model_name', f'Modelo {i+1}'),
-                      color=MODEL_COLORS[i % len(MODEL_COLORS)],
-                      alpha=0.85, edgecolor='white', linewidth=0.5)
+        ax.bar(x + offset, probs_pct, bar_width,
+               label=r.get('model_name', f'Modelo {i+1}'),
+               color=MODEL_COLORS[i % len(MODEL_COLORS)],
+               alpha=0.85, edgecolor='white', linewidth=0.5)
 
     ax.set_xlabel('Clase', fontsize=8, fontweight='bold')
     ax.set_ylabel('Probabilidad (%)', fontsize=8, fontweight='bold')
@@ -110,35 +126,24 @@ def _create_probability_chart(results: list[dict]) -> str:
 
 
 def _create_confidence_gauge(results: list[dict], consensus_severity: str) -> str:
-    """Crea un grafico circular (donut) mostrando la confianza de cada modelo.
-    Retorna path a imagen temporal PNG."""
     fig, axes = plt.subplots(1, len(results), figsize=(7.5, 2.0), dpi=150)
     if len(results) == 1:
         axes = [axes]
 
-    severity_color_map = {
-        'none': '#22C55E', 'mild': '#EAB308', 'moderate': '#F97316',
-        'severe': '#EF4444', 'proliferative': '#B91C1C',
-    }
-
     for i, (ax, r) in enumerate(zip(axes, results)):
         conf = r.get('confidence', 0)
         severity = r.get('severity', 'none')
-        color = severity_color_map.get(severity, '#6B7280')
+        color = SEVERITY_COLOR_HEX.get(severity, '#6B7280')
 
-        # Donut chart
         sizes = [conf, 1 - conf]
         colors_donut = [color, '#E5E7EB']
         ax.pie(sizes, colors=colors_donut, startangle=90,
                wedgeprops={'width': 0.3, 'edgecolor': 'white', 'linewidth': 1})
 
-        # Texto central
         ax.text(0, 0, f'{conf * 100:.0f}%', ha='center', va='center',
                 fontsize=10, fontweight='bold', color=color)
 
-        # Nombre del modelo debajo
         name = r.get('model_name', f'Modelo {i+1}')
-        # Acortar nombres largos
         short_name = name.replace(' + EA', '').replace('EfficientNet-B0', 'EffNet-B0')
         ax.set_title(short_name, fontsize=6, fontweight='bold', pad=2)
 
@@ -151,11 +156,9 @@ def _create_confidence_gauge(results: list[dict], consensus_severity: str) -> st
 
 
 def _create_agreement_chart(results: list[dict], consensus_severity: str) -> str:
-    """Crea grafico de acuerdo/votacion de modelos.
-    Retorna path a imagen temporal PNG."""
     from collections import Counter
 
-    fig, ax = plt.subplots(figsize=(3.5, 2.5), dpi=150)
+    fig, ax = plt.subplots(figsize=(4.0, 2.0), dpi=150)
 
     severities = [r.get('severity', 'none') for r in results if r.get('prediction') != 'Error']
     votes = Counter(severities)
@@ -164,10 +167,6 @@ def _create_agreement_chart(results: list[dict], consensus_severity: str) -> str
     labels = []
     counts = []
     colors = []
-    severity_color_map = {
-        'none': '#22C55E', 'mild': '#EAB308', 'moderate': '#F97316',
-        'severe': '#EF4444', 'proliferative': '#B91C1C',
-    }
     label_map = {
         'none': 'Sin RD', 'mild': 'Leve', 'moderate': 'Moderada',
         'severe': 'Severa', 'proliferative': 'Proliferativa',
@@ -177,16 +176,14 @@ def _create_agreement_chart(results: list[dict], consensus_severity: str) -> str
         if sev in votes:
             labels.append(label_map[sev])
             counts.append(votes[sev])
-            edge_color = severity_color_map[sev]
-            # Resaltar el ganador
+            edge_color = SEVERITY_COLOR_HEX[sev]
             if sev == consensus_severity:
                 colors.append(edge_color)
             else:
-                colors.append(edge_color + '60')  # semi-transparente
+                colors.append(edge_color + '60')
 
     bars = ax.barh(labels, counts, color=colors, edgecolor='white', linewidth=1, height=0.6)
 
-    # Etiquetas en las barras
     for bar, count in zip(bars, counts):
         ax.text(bar.get_width() + 0.1, bar.get_y() + bar.get_height() / 2,
                 f'{count} {"modelo" if count == 1 else "modelos"}',
@@ -207,11 +204,12 @@ def _create_agreement_chart(results: list[dict], consensus_severity: str) -> str
     return tmp.name
 
 
+# ---------------------------------------------------------------------------
+# Clase PDF
+# ---------------------------------------------------------------------------
 class RetinopathyReport(FPDF):
-    """PDF personalizado para reportes de retinopatia."""
 
     def header(self):
-        # Franja azul superior
         self.set_fill_color(30, 64, 175)
         self.rect(0, 0, 210, 3, 'F')
 
@@ -223,7 +221,6 @@ class RetinopathyReport(FPDF):
         self.set_text_color(120, 120, 120)
         self.cell(0, 10, 'Sistema de Deteccion de Retinopatia Diabetica', align='R')
         self.ln(12)
-        # Linea separadora gradiente
         self.set_draw_color(30, 64, 175)
         self.set_line_width(0.8)
         self.line(10, self.get_y(), 200, self.get_y())
@@ -250,20 +247,30 @@ class RetinopathyReport(FPDF):
         self.set_font('Helvetica', '', 7)
         self.cell(0, 4, f'Pagina {self.page_no()}/{{nb}}', align='C')
 
-    def _section_title(self, title: str, icon: str = ''):
-        """Dibuja un titulo de seccion con estilo."""
+    def section_title(self, title: str):
         self.set_font('Helvetica', 'B', 11)
         self.set_text_color(30, 64, 175)
-        prefix = f'{icon} ' if icon else ''
-        self.cell(0, 8, f'{prefix}{title}', ln=True)
-        # Linea sutil debajo
+        self.cell(0, 8, title, ln=True)
         y = self.get_y()
         self.set_draw_color(200, 215, 255)
         self.set_line_width(0.4)
         self.line(10, y, 80, y)
         self.ln(3)
 
+    def place_image_auto(self, image_path: str, w: float, x: float = 10):
+        """Inserta imagen calculando su alto real. Agrega pagina si no cabe."""
+        h = _image_height_mm(image_path, w)
+        # Margen inferior = 25 mm (footer)
+        space_left = 297 - self.get_y() - 25
+        if h > space_left:
+            self.add_page()
+        self.image(image_path, x=x, y=self.get_y(), w=w)
+        self.set_y(self.get_y() + h + 2)
 
+
+# ---------------------------------------------------------------------------
+# Generador principal
+# ---------------------------------------------------------------------------
 def generate_report(
     image_bytes: bytes,
     filename: str,
@@ -272,10 +279,9 @@ def generate_report(
     is_retinal: bool,
     gradcam_overlay_b64: str | None = None,
 ) -> bytes:
-    """Genera un reporte PDF completo y profesional."""
     pdf = RetinopathyReport()
     pdf.alias_nb_pages()
-    pdf.set_auto_page_break(auto=True, margin=25)
+    pdf.set_auto_page_break(auto=False, margin=25)
     pdf.add_page()
 
     now = datetime.now(timezone.utc)
@@ -284,7 +290,11 @@ def generate_report(
     tmp_files = []
 
     try:
-        # === TITULO DEL REPORTE ===
+        # =============================================
+        # PAGINA 1: Info + Imagenes + Diagnostico
+        # =============================================
+
+        # Titulo
         pdf.set_font('Helvetica', 'B', 15)
         pdf.set_text_color(30, 30, 30)
         pdf.cell(0, 8, 'Reporte de Analisis de Retinopatia Diabetica', ln=True)
@@ -295,7 +305,7 @@ def generate_report(
         pdf.cell(0, 5, f'Modelos utilizados: {len(results)} (Ensemble de consenso)', ln=True)
         pdf.ln(4)
 
-        # === WARNING NO RETINAL ===
+        # Warning no retinal
         if not is_retinal:
             pdf.set_fill_color(254, 226, 226)
             pdf.set_draw_color(239, 68, 68)
@@ -308,12 +318,13 @@ def generate_report(
             pdf.cell(0, 5, 'ADVERTENCIA: Imagen No Retinal Detectada', ln=True)
             pdf.set_x(14)
             pdf.set_font('Helvetica', '', 8)
-            pdf.cell(0, 5, 'La imagen proporcionada no parece corresponder a una retinografia. Los resultados pueden no ser confiables.', ln=True)
+            pdf.cell(0, 5, 'La imagen proporcionada no parece corresponder a una retinografia. '
+                     'Los resultados pueden no ser confiables.', ln=True)
             pdf.set_y(y_warn + 18)
             pdf.ln(2)
 
-        # === IMAGENES: ORIGINAL Y GRAD-CAM ===
-        pdf._section_title('Imagenes del Analisis')
+        # Imagenes
+        pdf.section_title('Imagenes del Analisis')
 
         try:
             img = Image.open(io.BytesIO(image_bytes)).convert('RGB')
@@ -335,33 +346,38 @@ def generate_report(
                 pdf.cell(90, 5, 'Mapa de Activacion (Grad-CAM)', align='C')
                 pdf.ln(6)
 
-                # Marcos con borde
                 img_y = pdf.get_y()
+                img_w = 85
+                img_h = _image_height_mm(tmp_orig.name, img_w)
+
+                # Marcos
                 pdf.set_draw_color(200, 200, 200)
                 pdf.set_line_width(0.3)
-                pdf.rect(14, img_y - 1, 87, 62)
-                pdf.rect(109, img_y - 1, 87, 62)
+                pdf.rect(14, img_y - 1, img_w + 2, img_h + 2)
+                pdf.rect(109, img_y - 1, img_w + 2, img_h + 2)
 
-                pdf.image(tmp_orig.name, x=15, y=img_y, w=85)
-                pdf.image(tmp_gc.name, x=110, y=img_y, w=85)
-                pdf.ln(64)
+                pdf.image(tmp_orig.name, x=15, y=img_y, w=img_w)
+                pdf.image(tmp_gc.name, x=110, y=img_y, w=img_w)
+                pdf.set_y(img_y + img_h + 4)
 
-                # Nota sobre Grad-CAM
                 pdf.set_font('Helvetica', 'I', 7)
                 pdf.set_text_color(130, 130, 130)
-                pdf.cell(0, 4, 'El mapa Grad-CAM resalta las regiones que el modelo considero mas relevantes para su prediccion (EfficientNet-B0 + EA).', ln=True)
+                pdf.cell(0, 4, 'El mapa Grad-CAM resalta las regiones mas relevantes '
+                         'para la prediccion (EfficientNet-B0 + EA).', ln=True)
             else:
-                # Solo imagen original centrada
                 pdf.set_font('Helvetica', 'B', 9)
                 pdf.set_text_color(60, 60, 60)
                 pdf.cell(0, 5, 'Imagen Analizada', align='C', ln=True)
                 pdf.ln(2)
                 img_y = pdf.get_y()
+                img_w = 80
+                img_h = _image_height_mm(tmp_orig.name, img_w)
+                x_center = (210 - img_w) / 2
                 pdf.set_draw_color(200, 200, 200)
                 pdf.set_line_width(0.3)
-                pdf.rect(54, img_y - 1, 102, 62)
-                pdf.image(tmp_orig.name, x=55, y=img_y, w=100)
-                pdf.ln(64)
+                pdf.rect(x_center - 1, img_y - 1, img_w + 2, img_h + 2)
+                pdf.image(tmp_orig.name, x=x_center, y=img_y, w=img_w)
+                pdf.set_y(img_y + img_h + 4)
         except Exception as e:
             pdf.set_font('Helvetica', 'I', 9)
             pdf.set_text_color(200, 60, 60)
@@ -369,7 +385,7 @@ def generate_report(
 
         pdf.ln(3)
 
-        # === DIAGNOSTICO POR CONSENSO ===
+        # Diagnostico por consenso
         severity = consensus.get('severity', 'none')
         severity_label = SEVERITY_LABELS.get(severity, severity)
         confidence = consensus.get('confidence', 0)
@@ -377,24 +393,26 @@ def generate_report(
         total = consensus.get('total_models', 5)
         recommendation = consensus.get('recommendation', '')
 
-        pdf._section_title('Resultado del Diagnostico')
+        # Si no cabe la caja de diagnostico (28mm + titulo), nueva pagina
+        if pdf.get_y() + 42 > 272:
+            pdf.add_page()
 
-        # Caja de diagnostico con color
+        pdf.section_title('Resultado del Diagnostico')
+
         bg = SEVERITY_BG_COLORS.get(severity, (240, 240, 240))
         sev_color = SEVERITY_COLORS.get(severity, (100, 100, 100))
 
         y_diag = pdf.get_y()
-        # Fondo
         pdf.set_fill_color(*bg)
         pdf.set_draw_color(*sev_color)
         pdf.set_line_width(0.6)
         pdf.rect(10, y_diag, 190, 28, 'FD')
 
-        # Barra lateral de color
+        # Barra lateral
         pdf.set_fill_color(*sev_color)
         pdf.rect(10, y_diag, 4, 28, 'F')
 
-        # Texto del diagnostico
+        # Texto
         pdf.set_xy(18, y_diag + 3)
         pdf.set_font('Helvetica', 'B', 13)
         pdf.set_text_color(*sev_color)
@@ -414,48 +432,54 @@ def generate_report(
         pdf.multi_cell(178, 4, desc)
 
         pdf.set_y(y_diag + 31)
-        pdf.ln(3)
 
-        # === GRAFICAS ===
+        # =============================================
+        # PAGINA 2: Graficas
+        # =============================================
         pdf.add_page()
 
-        # -- Grafica de confianza por modelo (donuts) --
-        pdf._section_title('Confianza Individual por Modelo')
+        # Grafica de confianza (donuts)
+        pdf.section_title('Confianza Individual por Modelo')
         try:
             gauge_path = _create_confidence_gauge(results, severity)
             tmp_files.append(gauge_path)
-            pdf.image(gauge_path, x=10, y=pdf.get_y(), w=190)
-            pdf.ln(38)
+            pdf.place_image_auto(gauge_path, w=190)
         except Exception as e:
             pdf.set_font('Helvetica', 'I', 8)
             pdf.cell(0, 5, f'[Error al generar grafico de confianza: {e}]', ln=True)
 
-        # -- Grafica de probabilidades --
-        pdf._section_title('Distribucion de Probabilidades')
+        pdf.ln(4)
+
+        # Grafica de probabilidades
+        pdf.section_title('Distribucion de Probabilidades')
         try:
             prob_chart_path = _create_probability_chart(results)
             tmp_files.append(prob_chart_path)
-            pdf.image(prob_chart_path, x=10, y=pdf.get_y(), w=190)
-            pdf.ln(58)
+            pdf.place_image_auto(prob_chart_path, w=190)
         except Exception as e:
             pdf.set_font('Helvetica', 'I', 8)
             pdf.cell(0, 5, f'[Error al generar grafico de probabilidades: {e}]', ln=True)
 
-        # -- Grafico de votacion --
-        pdf._section_title('Votacion del Ensemble')
+        pdf.ln(4)
+
+        # Grafico de votacion
+        pdf.section_title('Votacion del Ensemble')
         try:
             vote_chart_path = _create_agreement_chart(results, severity)
             tmp_files.append(vote_chart_path)
-            pdf.image(vote_chart_path, x=35, y=pdf.get_y(), w=140)
-            pdf.ln(48)
+            pdf.place_image_auto(vote_chart_path, w=120, x=45)
         except Exception as e:
             pdf.set_font('Helvetica', 'I', 8)
             pdf.cell(0, 5, f'[Error al generar grafico de votacion: {e}]', ln=True)
 
-        # === TABLA DE RESULTADOS POR MODELO ===
-        pdf._section_title('Detalle de Resultados por Modelo')
+        # =============================================
+        # PAGINA 3: Tabla + Escala + Info tecnica
+        # =============================================
+        pdf.add_page()
 
-        # Header de tabla
+        # Tabla de resultados
+        pdf.section_title('Detalle de Resultados por Modelo')
+
         pdf.set_font('Helvetica', 'B', 8)
         pdf.set_fill_color(30, 64, 175)
         pdf.set_text_color(255, 255, 255)
@@ -465,12 +489,7 @@ def generate_report(
             pdf.cell(col_widths[i], 7, h, border=0, fill=True, align='C')
         pdf.ln()
 
-        # Filas
         pdf.set_font('Helvetica', '', 7)
-        severity_emoji = {
-            'none': 'OK', 'mild': '(!)', 'moderate': '(!!)',
-            'severe': '(!!!)', 'proliferative': 'CRIT',
-        }
         for i, r in enumerate(results):
             fill = i % 2 == 0
             if fill:
@@ -508,10 +527,10 @@ def generate_report(
         pdf.set_draw_color(30, 64, 175)
         pdf.set_line_width(0.3)
         pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-        pdf.ln(5)
+        pdf.ln(8)
 
-        # === ESCALA DE SEVERIDAD ===
-        pdf._section_title('Escala de Clasificacion')
+        # Escala de clasificacion
+        pdf.section_title('Escala de Clasificacion')
 
         scale_items = [
             ('0 - Sin RD', 'none', 'No se observan anomalias retinales'),
@@ -525,7 +544,6 @@ def generate_report(
             color = SEVERITY_COLORS.get(sev_key, (100, 100, 100))
             is_current = sev_key == severity
 
-            # Circulo de color
             y_pos = pdf.get_y() + 2.5
             pdf.set_fill_color(*color)
             pdf.ellipse(12, y_pos - 1.5, 3, 3, 'F')
@@ -534,32 +552,33 @@ def generate_report(
             if is_current:
                 pdf.set_font('Helvetica', 'B', 8)
                 pdf.set_text_color(*color)
-                pdf.cell(30, 5, f'{label}')
+                pdf.cell(30, 5, label)
                 pdf.set_font('Helvetica', 'B', 8)
                 pdf.cell(0, 5, f'{desc}  << RESULTADO ACTUAL', ln=True)
             else:
                 pdf.set_font('Helvetica', '', 8)
                 pdf.set_text_color(60, 60, 60)
-                pdf.cell(30, 5, f'{label}')
+                pdf.cell(30, 5, label)
                 pdf.set_text_color(120, 120, 120)
                 pdf.cell(0, 5, desc, ln=True)
 
-        pdf.ln(5)
+        pdf.ln(8)
 
-        # === INFORMACION TECNICA ===
-        pdf._section_title('Informacion Tecnica')
+        # Informacion tecnica
+        pdf.section_title('Informacion Tecnica')
         pdf.set_font('Helvetica', '', 7)
         pdf.set_text_color(100, 100, 100)
         model_names = [r.get('model_name', '') for r in results]
         pdf.cell(0, 4, f'Modelos: {", ".join(model_names)}', ln=True)
-        pdf.cell(0, 4, 'Arquitectura: Ensemble de consenso (voto mayoritario con confianza ponderada)', ln=True)
-        pdf.cell(0, 4, 'Resolucion de entrada: 224x224 px | Dataset: RD_FINAL_V50K (50,000 imagenes)', ln=True)
+        pdf.cell(0, 4, 'Arquitectura: Ensemble de consenso (voto mayoritario '
+                 'con confianza ponderada)', ln=True)
+        pdf.cell(0, 4, 'Resolucion de entrada: 224x224 px | '
+                 'Dataset: RD_FINAL_V50K (50,000 imagenes)', ln=True)
         pdf.cell(0, 4, f'Imagen retinal valida: {"Si" if is_retinal else "No"}', ln=True)
 
         return bytes(pdf.output())
 
     finally:
-        # Limpiar TODOS los archivos temporales
         for tmp in tmp_files:
             try:
                 os.unlink(tmp)
