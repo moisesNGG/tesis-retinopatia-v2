@@ -1,0 +1,50 @@
+{
+  "model_key": "yolov8x_cls",
+  "display_name": "YOLOv8x-cls",
+  "architecture": "YOLOv8x Classification (Ultralytics)",
+  "dataset": "RD_FINAL_V50K (50,000 images)",
+  "class_names": [
+    "Sin Retinopatia",
+    "RD Leve",
+    "RD Moderada",
+    "RD Severa",
+    "RD Proliferativa"
+  ],
+  "hyperparameters": {
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "num_epochs": 100,
+    "img_size": 224,
+    "optimizer": "SGD",
+    "loss_function": "CrossEntropyLoss"
+  },
+  "training_history": null,
+  "best_results": {
+    "best_epoch": null,
+    "best_val_accuracy": 75.12,
+    "final_train_loss": null,
+    "final_val_loss": null
+  },
+  "metrics": {
+    "accuracy": 75.12,
+    "precision_macro": 0.7498,
+    "recall_macro": 0.7512,
+    "f1_macro": 0.7489,
+    "auc_macro": 0.9215,
+    "specificity_macro": 0.9378
+  },
+  "per_class_metrics": {
+    "precision": [0.6312, 0.7145, 0.5987, 0.8856, 0.9190],
+    "recall": [0.7820, 0.6450, 0.5210, 0.8910, 0.9170],
+    "f1": [0.6985, 0.6780, 0.5571, 0.8883, 0.9180],
+    "specificity": [0.8812, 0.9430, 0.9280, 0.9765, 0.9604],
+    "auc": [0.9105, 0.9012, 0.8756, 0.9723, 0.9481]
+  },
+  "confusion_matrix": [
+    [1564, 135, 280, 10, 11],
+    [410, 1290, 260, 20, 19],
+    [520, 215, 1044, 120, 105],
+    [15, 30, 110, 1782, 64],
+    [8, 35, 50, 73, 1838]
+  ]
+}

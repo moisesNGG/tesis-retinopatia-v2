@@ -121,6 +121,39 @@ export const predictionAPI = {
     }
 
     return response.json();
+  },
+
+  downloadReport: async (imageFile) => {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+
+    const REPORT_URL = `${window.location.origin}/api/predict/report`;
+
+    const response = await fetch(REPORT_URL, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Error al generar el reporte');
+    }
+
+    return response.blob();
+  }
+};
+
+// ============================================
+// MODELS - Metricas de modelos
+// ============================================
+
+export const modelsAPI = {
+  getAllMetrics: async () => {
+    return fetchWithAuth(`${API_BASE_URL}/models/metrics`);
+  },
+
+  getModelMetrics: async (modelKey) => {
+    return fetchWithAuth(`${API_BASE_URL}/models/metrics/${modelKey}`);
   }
 };
 
@@ -147,5 +180,6 @@ export default {
   auth: authAPI,
   pages: pagesAPI,
   prediction: predictionAPI,
+  models: modelsAPI,
   uiTexts: uiTextsAPI
 };

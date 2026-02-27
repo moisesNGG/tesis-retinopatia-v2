@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.core.config import settings
 from app.core.database import connect_to_mongo, close_mongo_connection
-from app.routes import auth, pages, prediction
+from app.routes import auth, pages, prediction, models
 from pathlib import Path
 import os
 
@@ -83,6 +83,7 @@ else:
 app.include_router(auth.router, prefix="/api")
 app.include_router(pages.router, prefix="/api")
 app.include_router(prediction.router, prefix="/api")
+app.include_router(models.router, prefix="/api")
 
 # Health check
 @app.get("/health")

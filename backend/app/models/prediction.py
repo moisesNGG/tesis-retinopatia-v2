@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 
 class SingleModelResult(BaseModel):
@@ -19,7 +19,17 @@ class ConsensusResult(BaseModel):
     recommendation: str
 
 
+class RetinalValidation(BaseModel):
+    is_retinal: bool
+    max_confidence: float
+    avg_entropy: float
+
+
 class MultiModelPredictionResponse(BaseModel):
     results: List[SingleModelResult]
     consensus: ConsensusResult
     image_filename: str
+    is_retinal: bool = True
+    retinal_validation: Optional[RetinalValidation] = None
+    gradcam_overlay: Optional[str] = None
+    gradcam_model: Optional[str] = None

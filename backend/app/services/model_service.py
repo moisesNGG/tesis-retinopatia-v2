@@ -6,6 +6,7 @@ from PIL import Image
 import io
 import os
 import gc
+import math
 import threading
 import traceback
 
@@ -457,6 +458,69 @@ class ModelService:
             'severity': SEVERITY_LEVELS[idx],
             'probabilities': [round(p, 4) for p in all_probs],
         }
+
+    # -------------------------------------------------------------------
+    # Deteccion de imagen no-retinal
+    # -------------------------------------------------------------------
+    def check_retinal_validity(self, results: list[dict]) -> dict:
+        """
+        Determina si la imagen es una retinografia valida.
+        Criterios: max_confidence < 0.45 Y avg_entropy > 1.3 => no retinal.
+        """
+        valid = [r for r in results if r.get('prediction') != 'Error']
+        if not valid:
+            return {'is_retinal': False, 'max_confidence': 0.0, 'avg_entropy': 0.0}
+
+        max_confidence = max(r['confidence'] for r in valid)
+
+        entropies = []
+        for r in valid:
+            probs = r.get('probabilities', [])
+            if probs:
+                entropy = -sum(p * math.log(p + 1e-10) for p in probs)
+                entropies.append(entropy)
+
+        avg_entropy = sum(entropies) / len(entropies) if entropies else 0.0
+
+        is_retinal = not (max_confidence < 0.45 and avg_entropy > 1.3)
+
+        return {
+            'is_retinal': is_retinal,
+            'max_confidence': round(max_confidence, 4),
+            'avg_entropy': round(avg_entropy, 4),
+        }
+
+    # -------------------------------------------------------------------
+    # Grad-CAM con EfficientNet-B0+EA
+    # -------------------------------------------------------------------
+    def predict_with_gradcam(self, image_bytes: bytes) -> dict | None:
+        """
+        Ejecuta Grad-CAM sobre EfficientNet-B0+EA y retorna overlay base64.
+        """
+        model_name = 'EfficientNet-B0 + EA'
+        if model_name not in self.models:
+            print(f"[WARN] {model_name} no disponible para Grad-CAM")
+            return None
+
+        try:
+            from app.services.gradcam_service import generate_heatmap_overlay
+
+            model = self.models[model_name]['model']
+            input_tensor = preprocess_image(image_bytes)
+
+            overlay_b64, pred_class = generate_heatmap_overlay(
+                model, input_tensor, image_bytes
+            )
+
+            return {
+                'overlay_base64': overlay_b64,
+                'gradcam_model': model_name,
+                'gradcam_class': CLASS_LABELS[pred_class],
+            }
+        except Exception:
+            print("[ERROR] Fallo al generar Grad-CAM:")
+            traceback.print_exc()
+            return None
 
 
 # Singleton

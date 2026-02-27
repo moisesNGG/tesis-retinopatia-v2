@@ -1,7 +1,9 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi.responses import Response
 from app.models.prediction import (
     SingleModelResult,
     ConsensusResult,
+    RetinalValidation,
     MultiModelPredictionResponse,
 )
 from app.services.model_service import model_service
@@ -35,12 +37,105 @@ async def predict_retinopathy(image: UploadFile = File(...)):
 
     results = [SingleModelResult(**r) for r in raw_results]
 
+    # Validar si es una imagen retinal
+    validity = model_service.check_retinal_validity(raw_results)
+    retinal_validation = RetinalValidation(**validity)
+
     consensus = _compute_consensus(results)
+
+    # Grad-CAM solo si es imagen retinal
+    gradcam_overlay = None
+    gradcam_model = None
+    if validity['is_retinal']:
+        gradcam_result = model_service.predict_with_gradcam(contents)
+        if gradcam_result:
+            gradcam_overlay = gradcam_result['overlay_base64']
+            gradcam_model = gradcam_result['gradcam_model']
+
+    # Log de prediccion
+    try:
+        from app.services.prediction_logger import log_prediction
+        log_prediction(
+            filename=image.filename or "imagen.jpg",
+            consensus_severity=consensus.severity,
+            consensus_confidence=consensus.confidence,
+            agreement_count=consensus.agreement_count,
+            total_models=consensus.total_models,
+            is_retinal=validity['is_retinal'],
+            model_results=raw_results,
+        )
+    except Exception:
+        pass  # No fallar por el logging
 
     return MultiModelPredictionResponse(
         results=results,
         consensus=consensus,
         image_filename=image.filename or "imagen.jpg",
+        is_retinal=validity['is_retinal'],
+        retinal_validation=retinal_validation,
+        gradcam_overlay=gradcam_overlay,
+        gradcam_model=gradcam_model,
+    )
+
+
+@router.post("/report")
+async def generate_report(image: UploadFile = File(...)):
+    """Genera un reporte PDF con el analisis completo de la imagen."""
+
+    if not image.content_type or not image.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="El archivo debe ser una imagen")
+
+    if model_service.loading:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Los modelos de IA se estan cargando ({model_service.models_loaded_count}/5).",
+        )
+
+    if not model_service.loaded:
+        raise HTTPException(
+            status_code=503,
+            detail="Los modelos de IA no pudieron cargarse.",
+        )
+
+    contents = await image.read()
+
+    # Ejecutar prediccion completa
+    raw_results = model_service.predict_all(contents)
+    results = [SingleModelResult(**r) for r in raw_results]
+    validity = model_service.check_retinal_validity(raw_results)
+    consensus = _compute_consensus(results)
+
+    # Grad-CAM
+    gradcam_overlay_b64 = None
+    if validity['is_retinal']:
+        gradcam_result = model_service.predict_with_gradcam(contents)
+        if gradcam_result:
+            gradcam_overlay_b64 = gradcam_result['overlay_base64']
+
+    # Generar PDF
+    from app.services.pdf_service import generate_report
+    pdf_bytes = generate_report(
+        image_bytes=contents,
+        filename=image.filename or "imagen.jpg",
+        results=raw_results,
+        consensus={
+            'prediction': consensus.prediction,
+            'severity': consensus.severity,
+            'confidence': consensus.confidence,
+            'agreement_count': consensus.agreement_count,
+            'total_models': consensus.total_models,
+            'recommendation': consensus.recommendation,
+        },
+        is_retinal=validity['is_retinal'],
+        gradcam_overlay_b64=gradcam_overlay_b64,
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="reporte_retinopatia.pdf"'
+        },
     )
 
 

@@ -6,19 +6,15 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../components/ui/accordion';
 
-import { Upload, Image as ImageIcon, AlertCircle, CheckCircle2, Loader2, ShieldCheck, Info } from 'lucide-react';
+import {
+  Upload, Image as ImageIcon, AlertCircle, CheckCircle2, Loader2,
+  ShieldCheck, Info, Download, RotateCcw, AlertTriangle, Activity, Eye,
+} from 'lucide-react';
 import { pagesAPI, predictionAPI } from '../services/api';
 import Hero from '../components/sections/Hero';
 import ContentSection from '../components/sections/ContentSection';
-
-const MODEL_NAMES = [
-  'DenseNet121 + EA',
-  'EfficientNet-B0 + EA',
-  'ResNet50 + EA',
-  'ViT-B/16',
-  'YOLOv8x-cls',
-];
 
 const CLASS_LABELS = [
   'Sin RD',
@@ -47,6 +43,7 @@ const Proceso = () => {
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [showConsentDialog, setShowConsentDialog] = useState(false);
   const [consentChoice, setConsentChoice] = useState(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -141,6 +138,27 @@ const Proceso = () => {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    if (!selectedFile) return;
+    setDownloadingPdf(true);
+    try {
+      const blob = await predictionAPI.downloadReport(selectedFile);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'reporte_retinopatia.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError('Error al generar el reporte PDF. Intenta de nuevo.');
+      console.error(err);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   const resetAnalysis = () => {
     setSelectedFile(null);
     setPreview(null);
@@ -222,14 +240,13 @@ const Proceso = () => {
             </div>
           )}
 
-          {/* Upload Area con instrucciones integradas */}
+          {/* Upload Area */}
           <Card className="mb-6">
             <CardHeader className="pb-3">
               <CardTitle>Subir Imagen</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Instrucciones compactas */}
                 <div className="flex items-start gap-2 text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
                   <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
                   <p>
@@ -314,16 +331,9 @@ const Proceso = () => {
                   <p className="text-sm text-gray-600 text-center font-medium">
                     Analizando imagen con 5 modelos de IA...
                   </p>
-                  <div className="flex flex-wrap justify-center gap-2 mb-2">
-                    {MODEL_NAMES.map((name) => (
-                      <Badge key={name} variant="outline" className="text-xs">
-                        {name}
-                      </Badge>
-                    ))}
-                  </div>
                   <Progress value={progressValue} className="w-full" />
                   <p className="text-xs text-gray-400 text-center">
-                    Este proceso puede tardar 10-15 segundos
+                    Este proceso puede tardar 15-30 segundos (incluye generacion de mapa de calor)
                   </p>
                 </div>
               </CardContent>
@@ -341,83 +351,218 @@ const Proceso = () => {
           {/* Results */}
           {result && (
             <div className="space-y-5">
-              {/* Consenso */}
-              <Card className="border-2 border-blue-200">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl">Diagnostico por Consenso</CardTitle>
-                    <CheckCircle2 className="h-7 w-7 text-green-600" />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              {/* Warning: No es retinografia */}
+              {!result.is_retinal && (
+                <Alert variant="destructive" className="border-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  <AlertDescription className="text-sm">
+                    <strong>Esta imagen no parece ser una retinografia valida.</strong>
+                    <br />
+                    El sistema detecto baja confianza en todos los modelos (max: {(result.retinal_validation?.max_confidence * 100 || 0).toFixed(1)}%)
+                    y alta entropia promedio ({result.retinal_validation?.avg_entropy?.toFixed(2) || '0'}).
+                    Los resultados pueden no ser confiables. Utilice una imagen de fondo de ojo.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Grid 2x2: Imagen original + Grad-CAM + Barras + Diagnostico */}
+              {result.is_retinal && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Panel 1: Imagen original */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4" />
+                        Imagen Original
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="rounded-lg overflow-hidden bg-gray-100">
+                        <img
+                          src={preview}
+                          alt="Imagen original"
+                          className="w-full h-auto max-h-64 object-contain mx-auto"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Panel 2: Grad-CAM */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        Mapa de Calor (Grad-CAM)
+                        {result.gradcam_model && (
+                          <Badge variant="outline" className="text-[10px] ml-auto">
+                            {result.gradcam_model}
+                          </Badge>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="rounded-lg overflow-hidden bg-gray-100">
+                        {result.gradcam_overlay ? (
+                          <img
+                            src={`data:image/jpeg;base64,${result.gradcam_overlay}`}
+                            alt="Grad-CAM heatmap"
+                            className="w-full h-auto max-h-64 object-contain mx-auto"
+                          />
+                        ) : (
+                          <div className="h-48 flex items-center justify-center text-gray-400 text-sm">
+                            Mapa de calor no disponible
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-2">
+                        Las zonas rojas/amarillas indican las regiones que mas influyeron en la prediccion del modelo.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Panel 3: Barras de probabilidades (consenso) */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Activity className="h-4 w-4" />
+                        Probabilidades por Clase
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {CLASS_LABELS.map((label, i) => {
+                          // Promediar probabilidades de todos los modelos para esta clase
+                          const avgProb = result.results.reduce(
+                            (sum, r) => sum + (r.probabilities?.[i] || 0), 0
+                          ) / result.results.length;
+                          const pct = (avgProb * 100).toFixed(1);
+                          return (
+                            <div key={i} className="flex items-center gap-2">
+                              <span className="text-xs text-gray-600 w-24 text-right flex-shrink-0">
+                                {label}
+                              </span>
+                              <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${CLASS_COLORS[i].bg}`}
+                                  style={{ width: `${Math.max(avgProb * 100, 0.5)}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-600 w-12 text-right font-mono">
+                                {pct}%
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[11px] text-gray-400 mt-2">Promedio de los 5 modelos</p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Panel 4: Diagnostico */}
+                  <Card className="border-2 border-blue-200">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm">Diagnostico por Consenso</CardTitle>
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <Badge className={`text-base py-1.5 px-4 ${getSeverityColor(result.consensus.severity)}`}>
+                        {result.consensus.prediction}
+                      </Badge>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="bg-gray-50 rounded-lg p-2">
+                          <p className="text-gray-500 text-xs">Confianza</p>
+                          <p className="font-bold text-gray-900">
+                            {(result.consensus.confidence * 100).toFixed(1)}%
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-2">
+                          <p className="text-gray-500 text-xs">Acuerdo</p>
+                          <p className="font-bold text-gray-900">
+                            {result.consensus.agreement_count}/{result.consensus.total_models} modelos
+                          </p>
+                        </div>
+                      </div>
+                      <Alert>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="text-xs">
+                          {result.consensus.recommendation}
+                        </AlertDescription>
+                      </Alert>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Si no es retinal, mostrar solo consenso simple */}
+              {!result.is_retinal && (
+                <Card className="border border-gray-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Resultado (no confiable)</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
                     <Badge className={`text-base py-1.5 px-4 ${getSeverityColor(result.consensus.severity)}`}>
                       {result.consensus.prediction}
                     </Badge>
-                    <div className="flex flex-wrap gap-3 text-sm text-gray-600">
-                      <span>
-                        Confianza: <strong>{(result.consensus.confidence * 100).toFixed(1)}%</strong>
-                      </span>
-                      <span>
-                        Acuerdo: <strong>{result.consensus.agreement_count}/{result.consensus.total_models} modelos</strong>
-                      </span>
+                    <p className="text-sm text-gray-600">
+                      Confianza: {(result.consensus.confidence * 100).toFixed(1)}% |
+                      Acuerdo: {result.consensus.agreement_count}/{result.consensus.total_models} modelos
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Detalle por modelo en Accordion */}
+              <Accordion type="single" collapsible>
+                <AccordionItem value="model-details">
+                  <AccordionTrigger className="text-sm font-semibold">
+                    Resultados Detallados por Modelo ({result.results.length} modelos)
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      {result.results.map((r) => (
+                        <Card key={r.model_name} className="overflow-hidden">
+                          <CardHeader className="pb-2 pt-4 px-4">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-sm text-gray-900">{r.model_name}</span>
+                              <Badge className={`text-xs ${getSeverityColor(r.severity)}`}>
+                                {getSeverityLabel(r.severity)}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              Confianza: {(r.confidence * 100).toFixed(1)}%
+                            </p>
+                          </CardHeader>
+                          <CardContent className="px-4 pb-4 pt-1">
+                            <div className="space-y-1.5">
+                              {r.probabilities && r.probabilities.map((prob, i) => {
+                                const pct = (prob * 100).toFixed(1);
+                                return (
+                                  <div key={i} className="flex items-center gap-2">
+                                    <span className="text-[11px] text-gray-500 w-20 text-right flex-shrink-0 truncate">
+                                      {CLASS_LABELS[i]}
+                                    </span>
+                                    <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all ${CLASS_COLORS[i].bg}`}
+                                        style={{ width: `${Math.max(prob * 100, 0.5)}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[11px] text-gray-600 w-11 text-right flex-shrink-0 font-mono">
+                                      {pct}%
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
-                  </div>
-
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Recomendacion:</strong> {result.consensus.recommendation}
-                    </AlertDescription>
-                  </Alert>
-                </CardContent>
-              </Card>
-
-              {/* Per-model cards con probabilidades */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Resultados por Modelo</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {result.results.map((r) => (
-                    <Card key={r.model_name} className="overflow-hidden">
-                      <CardHeader className="pb-2 pt-4 px-4">
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-sm text-gray-900">{r.model_name}</span>
-                          <Badge className={`text-xs ${getSeverityColor(r.severity)}`}>
-                            {getSeverityLabel(r.severity)}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          Confianza: {(r.confidence * 100).toFixed(1)}%
-                        </p>
-                      </CardHeader>
-                      <CardContent className="px-4 pb-4 pt-1">
-                        {/* Barras de probabilidad */}
-                        <div className="space-y-1.5">
-                          {r.probabilities && r.probabilities.map((prob, i) => {
-                            const pct = (prob * 100).toFixed(1);
-                            return (
-                              <div key={i} className="flex items-center gap-2">
-                                <span className="text-[11px] text-gray-500 w-20 text-right flex-shrink-0 truncate">
-                                  {CLASS_LABELS[i]}
-                                </span>
-                                <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all ${CLASS_COLORS[i].bg}`}
-                                    style={{ width: `${Math.max(prob * 100, 0.5)}%` }}
-                                  />
-                                </div>
-                                <span className="text-[11px] text-gray-600 w-11 text-right flex-shrink-0 font-mono">
-                                  {pct}%
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
               {/* Disclaimer */}
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-900">
@@ -427,9 +572,31 @@ const Proceso = () => {
                 evaluacion completa.
               </div>
 
-              <Button onClick={resetAnalysis} variant="outline" className="w-full">
-                Analizar Nueva Imagen
-              </Button>
+              {/* Botones de accion */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleDownloadPdf}
+                  disabled={downloadingPdf}
+                  className="flex-1"
+                  variant="default"
+                >
+                  {downloadingPdf ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generando PDF...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-4 w-4" />
+                      Descargar Reporte PDF
+                    </>
+                  )}
+                </Button>
+                <Button onClick={resetAnalysis} variant="outline" className="flex-1">
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Analizar Nueva Imagen
+                </Button>
+              </div>
             </div>
           )}
         </div>

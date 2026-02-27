@@ -22,6 +22,9 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # Copiar código del backend
 COPY backend/ .
 
+# Copiar datos de metricas de modelos
+COPY backend/data/ /app/data/
+
 # Descargar modelos desde Hugging Face (sin limite de bandwidth)
 ENV HF_REPO=https://huggingface.co/Pimientos7/retinopatia-models-v2/resolve/main
 RUN echo "[INFO] Descargando modelos desde Hugging Face..." && \
