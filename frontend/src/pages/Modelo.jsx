@@ -234,7 +234,7 @@ const Modelo = () => {
               Comparativa de Rendimiento
             </h2>
             <p className="text-gray-600 text-center mb-8 max-w-2xl mx-auto text-sm">
-              Metricas de evaluacion de cada modelo sobre el conjunto de validacion (10,008 imagenes).
+              Metricas de evaluacion de cada modelo sobre el conjunto de validacion (50,000 imagenes).
             </p>
             <div className="overflow-x-auto -mx-4 px-4">
               <table className="w-full text-sm min-w-[600px]">
