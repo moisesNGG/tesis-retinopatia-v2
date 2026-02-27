@@ -556,7 +556,7 @@ def generate_report(
         pdf.cell(0, 4, 'Resolucion de entrada: 224x224 px | Dataset: RD_FINAL_V50K (50,000 imagenes)', ln=True)
         pdf.cell(0, 4, f'Imagen retinal valida: {"Si" if is_retinal else "No"}', ln=True)
 
-        return pdf.output()
+        return bytes(pdf.output())
 
     finally:
         # Limpiar TODOS los archivos temporales
