@@ -460,18 +460,37 @@ class ModelService:
         }
 
     # -------------------------------------------------------------------
-    # Deteccion de imagen no-retinal
+    # Deteccion de imagen no-retinal (multi-criterio)
     # -------------------------------------------------------------------
     def check_retinal_validity(self, results: list[dict]) -> dict:
         """
-        Determina si la imagen es una retinografia valida.
-        Criterios: max_confidence < 0.45 Y avg_entropy > 1.3 => no retinal.
+        Determina si la imagen es una retinografia valida usando multiples
+        criterios combinados:
+
+        1. Concordancia: si los modelos no se ponen de acuerdo en la clase,
+           probablemente no es una retina.
+        2. Confianza promedio: si todos los modelos tienen baja confianza,
+           la imagen no se parece a nada que hayan visto.
+        3. Entropia promedio: distribuciones uniformes indican incertidumbre.
+        4. Confianza maxima: si ni el modelo mas seguro supera un umbral,
+           es sospechoso.
+
+        Se acumulan "flags" y si hay 2+ flags activos => no retinal.
         """
         valid = [r for r in results if r.get('prediction') != 'Error']
         if not valid:
-            return {'is_retinal': False, 'max_confidence': 0.0, 'avg_entropy': 0.0}
+            return {
+                'is_retinal': False,
+                'max_confidence': 0.0,
+                'avg_entropy': 0.0,
+                'agreement_ratio': 0.0,
+                'flags': ['no_models'],
+            }
 
-        max_confidence = max(r['confidence'] for r in valid)
+        # --- Metricas ---
+        confidences = [r['confidence'] for r in valid]
+        max_confidence = max(confidences)
+        avg_confidence = sum(confidences) / len(confidences)
 
         entropies = []
         for r in valid:
@@ -479,15 +498,48 @@ class ModelService:
             if probs:
                 entropy = -sum(p * math.log(p + 1e-10) for p in probs)
                 entropies.append(entropy)
-
         avg_entropy = sum(entropies) / len(entropies) if entropies else 0.0
 
-        is_retinal = not (max_confidence < 0.45 and avg_entropy > 1.3)
+        # Concordancia: cuantos modelos votan por la clase mas comun
+        from collections import Counter
+        severity_votes = [r['severity'] for r in valid]
+        most_common_count = Counter(severity_votes).most_common(1)[0][1]
+        agreement_ratio = most_common_count / len(valid)  # 1.0 = unanimidad
+
+        # --- Flags de sospecha ---
+        flags = []
+
+        # Flag 1: Baja concordancia (menos del 50% de modelos coinciden)
+        if agreement_ratio < 0.5:
+            flags.append('low_agreement')
+
+        # Flag 2: Confianza promedio baja
+        if avg_confidence < 0.55:
+            flags.append('low_avg_confidence')
+
+        # Flag 3: Entropia alta (distribucion casi uniforme)
+        if avg_entropy > 1.2:
+            flags.append('high_entropy')
+
+        # Flag 4: Ni el modelo mas seguro supera 65%
+        if max_confidence < 0.65:
+            flags.append('low_max_confidence')
+
+        # Flag 5: Muchas clases diferentes predichas (3+ clases distintas entre 5 modelos)
+        unique_predictions = len(set(severity_votes))
+        if unique_predictions >= 3:
+            flags.append('scattered_predictions')
+
+        # Decision: 2+ flags = no retinal
+        is_retinal = len(flags) < 2
 
         return {
             'is_retinal': is_retinal,
             'max_confidence': round(max_confidence, 4),
+            'avg_confidence': round(avg_confidence, 4),
             'avg_entropy': round(avg_entropy, 4),
+            'agreement_ratio': round(agreement_ratio, 4),
+            'flags': flags,
         }
 
     # -------------------------------------------------------------------

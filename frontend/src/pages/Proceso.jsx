@@ -434,10 +434,10 @@ const Proceso = () => {
                 <Alert variant="destructive" className="border-2">
                   <AlertTriangle className="h-5 w-5" />
                   <AlertDescription className="text-sm">
-                    <strong>Esta imagen no parece ser una retinografia valida.</strong>
+                    <strong>La imagen no corresponde a una retinografia.</strong>
                     <br />
-                    El modelo detecto baja confianza ({(customResult.confidence * 100).toFixed(1)}%).
-                    Los resultados pueden no ser confiables.
+                    El sistema determino que esta imagen no es una fotografia de fondo de ojo.
+                    Por favor suba una retinografia valida para obtener un diagnostico.
                   </AlertDescription>
                 </Alert>
               )}
@@ -583,11 +583,11 @@ const Proceso = () => {
                 <Alert variant="destructive" className="border-2">
                   <AlertTriangle className="h-5 w-5" />
                   <AlertDescription className="text-sm">
-                    <strong>Esta imagen no parece ser una retinografia valida.</strong>
+                    <strong>La imagen no corresponde a una retinografia.</strong>
                     <br />
-                    El sistema detecto baja confianza en todos los modelos (max: {(result.retinal_validation?.max_confidence * 100 || 0).toFixed(1)}%)
-                    y alta entropia promedio ({result.retinal_validation?.avg_entropy?.toFixed(2) || '0'}).
-                    Los resultados pueden no ser confiables. Utilice una imagen de fondo de ojo.
+                    El sistema determino que esta imagen no es una fotografia de fondo de ojo.
+                    Los modelos mostraron baja concordancia y confianza insuficiente.
+                    Por favor suba una retinografia valida para obtener un diagnostico.
                   </AlertDescription>
                 </Alert>
               )}

@@ -105,12 +105,13 @@ async def predict_custom_model(image: UploadFile = File(...)):
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
 
-    # Validar si es retinal usando solo este modelo
+    # Validar si es retinal usando solo este modelo (criterios mas estrictos)
     import math
     probs = result.get('probabilities', [])
     confidence = result.get('confidence', 0.0)
     entropy = -sum(p * math.log(p + 1e-10) for p in probs) if probs else 0.0
-    is_retinal = not (confidence < 0.45 and entropy > 1.3)
+    # Con un solo modelo: exigir confianza >= 60% O entropia baja
+    is_retinal = confidence >= 0.60 or entropy < 1.0
 
     # Grad-CAM
     gradcam_overlay = None
