@@ -6,10 +6,91 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { ArrowLeft, Save, Plus, Trash2, CheckCircle2, Eye } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, CheckCircle2, Eye, Upload, X, Link as LinkIcon } from 'lucide-react';
 import { pagesAPI } from '../../services/api';
 import Hero from '../../components/sections/Hero';
 import ContentSection from '../../components/sections/ContentSection';
+
+const ImageUpload = ({ value, onChange, label }) => {
+  const [uploading, setUploading] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const fileInputRef = React.useRef(null);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const result = await pagesAPI.uploadImage(file);
+      onChange(result.url);
+    } catch (err) {
+      console.error('Error al subir imagen:', err);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  return (
+    <div>
+      <Label>{label}</Label>
+      {value && (
+        <div className="relative mt-1 mb-2 rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
+          <img
+            src={value.startsWith('/') ? `${window.location.origin}${value}` : value}
+            alt="Preview"
+            className="w-full h-32 object-cover"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+      <div className="flex gap-2 mt-1">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+        >
+          <Upload className="h-4 w-4 mr-1" />
+          {uploading ? 'Subiendo...' : 'Subir imagen'}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowUrlInput(!showUrlInput)}
+        >
+          <LinkIcon className="h-4 w-4 mr-1" />
+          URL
+        </Button>
+      </div>
+      {showUrlInput && (
+        <Input
+          className="mt-2"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://ejemplo.com/imagen.jpg"
+        />
+      )}
+    </div>
+  );
+};
 
 const PageEditor = () => {
   const navigate = useNavigate();
@@ -180,15 +261,11 @@ const PageEditor = () => {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="heroImage">URL Imagen Principal</Label>
-                <Input
-                  id="heroImage"
-                  value={pageData.heroImage}
-                  onChange={(e) => updateField('heroImage', e.target.value)}
-                  placeholder="https://ejemplo.com/imagen.jpg"
-                />
-              </div>
+              <ImageUpload
+                label="Imagen Principal"
+                value={pageData.heroImage}
+                onChange={(url) => updateField('heroImage', url)}
+              />
 
               <div>
                 <Label htmlFor="heroImageStyle">Estilo de Imagen Principal</Label>
@@ -265,16 +342,11 @@ const PageEditor = () => {
                       />
                     </div>
 
-                    <div>
-                      <Label>URL de Imagen (opcional)</Label>
-                      <Input
-                        value={section.image || ''}
-                        onChange={(e) =>
-                          updateSection(index, 'image', e.target.value)
-                        }
-                        placeholder="https://ejemplo.com/imagen.jpg"
-                      />
-                    </div>
+                    <ImageUpload
+                      label="Imagen (opcional)"
+                      value={section.image || ''}
+                      onChange={(url) => updateSection(index, 'image', url)}
+                    />
 
                     {section.image && (
                       <>

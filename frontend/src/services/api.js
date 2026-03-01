@@ -92,6 +92,30 @@ export const pagesAPI = {
       method: 'PUT',
       body: JSON.stringify(data)
     });
+  },
+
+  uploadImage: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = localStorage.getItem('authToken');
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/pages/upload`, {
+      method: 'POST',
+      body: formData,
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Error al subir imagen' }));
+      throw new Error(error.detail || 'Error al subir imagen');
+    }
+
+    return response.json();
   }
 };
 

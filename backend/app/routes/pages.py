@@ -1,9 +1,12 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, UploadFile, File, status
 from typing import List
 from app.models.page import PageCreate, PageUpdate, PageInDB
 from app.core.database import get_database
 from datetime import datetime
 from bson import ObjectId
+from pathlib import Path
+from uuid import uuid4
+import shutil
 
 router = APIRouter(prefix="/pages", tags=["Pages"])
 
@@ -112,3 +115,30 @@ async def delete_page(slug: str):
         )
 
     return None
+
+
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+UPLOADS_DIR = Path("/app/uploads") if Path("/app/uploads").exists() else Path(__file__).resolve().parent.parent.parent / "uploads"
+
+
+@router.post("/upload", response_model=dict)
+async def upload_image(file: UploadFile = File(...)):
+    """Subir una imagen para usar en el CMS"""
+    if file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Tipo de archivo no permitido: {file.content_type}. Solo se permiten: jpg, png, webp, gif"
+        )
+
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Generar nombre único preservando la extensión original
+    ext = Path(file.filename).suffix.lower() if file.filename else ".jpg"
+    safe_name = Path(file.filename).stem.replace(" ", "-") if file.filename else "imagen"
+    unique_name = f"{uuid4().hex[:8]}_{safe_name}{ext}"
+    dest = UPLOADS_DIR / unique_name
+
+    with open(dest, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    return {"url": f"/uploads/{unique_name}"}
