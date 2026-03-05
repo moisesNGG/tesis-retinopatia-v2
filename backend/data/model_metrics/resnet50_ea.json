@@ -4,7 +4,7 @@
   "architecture": "ResNet50 + 10 Conv Layers + External Attention",
   "dataset": "RD_FINAL_V50K (50,000 images)",
   "class_names": [
-    "No Corresponde a RD",
+    "Sin RD",
     "RD Leve",
     "RD Moderada",
     "RD Severa",

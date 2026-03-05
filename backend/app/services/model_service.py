@@ -14,7 +14,7 @@ import traceback
 # Constantes
 # ---------------------------------------------------------------------------
 CLASS_LABELS = [
-    'No Corresponde a RD',
+    'Sin RD',
     'Retinopatia Diabetica Leve',
     'Retinopatia Diabetica Moderada',
     'Retinopatia Diabetica Severa',

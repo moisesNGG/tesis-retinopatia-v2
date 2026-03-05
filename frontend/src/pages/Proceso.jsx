@@ -18,7 +18,7 @@ import Hero from '../components/sections/Hero';
 import ContentSection from '../components/sections/ContentSection';
 
 const CLASS_LABELS = [
-  'No Corresponde a RD',
+  'Sin RD',
   'RD Leve',
   'RD Moderada',
   'RD Severa',
@@ -218,7 +218,7 @@ const Proceso = () => {
 
   const getSeverityLabel = (severity) => {
     const labels = {
-      none: 'No Corresponde a RD',
+      none: 'Sin RD',
       mild: 'Leve',
       moderate: 'Moderada',
       severe: 'Severa',

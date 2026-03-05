@@ -19,7 +19,7 @@ import numpy as np
 
 
 CLASS_LABELS = [
-    'No Corresponde a RD',
+    'Sin RD',
     'RD Leve',
     'RD Moderada',
     'RD Severa',
@@ -533,7 +533,7 @@ def generate_report(
         pdf.section_title('Escala de Clasificacion')
 
         scale_items = [
-            ('0 - No Corresponde a RD', 'none', 'La imagen no corresponde a una retinografia'),
+            ('0 - Sin RD', 'none', 'La imagen no corresponde a una retinografia'),
             ('1 - RD Leve', 'mild', 'Microaneurismas aislados'),
             ('2 - RD Moderada', 'moderate', 'Hemorragias retinales y exudados moderados'),
             ('3 - RD Severa', 'severe', 'Hemorragias extensas, IRMA, arrosariamiento venoso'),

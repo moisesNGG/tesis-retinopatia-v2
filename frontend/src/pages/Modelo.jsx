@@ -674,7 +674,7 @@ const Modelo = () => {
             El ensemble clasifica las imagenes en 5 categorias de severidad
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            <Badge variant="outline" className="py-1.5 px-3 text-sm shadow-sm">No Corresponde a RD</Badge>
+            <Badge variant="outline" className="py-1.5 px-3 text-sm shadow-sm">Sin RD</Badge>
             <Badge variant="outline" className="py-1.5 px-3 text-sm bg-yellow-50 shadow-sm">RD Leve</Badge>
             <Badge variant="outline" className="py-1.5 px-3 text-sm bg-orange-50 shadow-sm">RD Moderada</Badge>
             <Badge variant="outline" className="py-1.5 px-3 text-sm bg-red-50 shadow-sm">RD Severa</Badge>
